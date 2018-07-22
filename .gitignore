@@ -1,0 +1,9 @@
+/*
+!/.eslintrc
+!/.gitignore
+!/.npmignore
+!/build.js
+!/package.json
+!/preact
+!/readme.md
+!/src
