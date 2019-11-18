@@ -8,9 +8,9 @@ Minimal pushstate routing for JS applications.
   * works well with server-side rendering
   * plain regexps, not a custom string-based dialect
 
-Meant to be used with [`history`](https://github.com/ReactTraining/history) or an API-compatible alternative. Usable with any UI library. Comes with a Preact adapter that implements pushstate links.
+Meant to be used with [`history`](https://github.com/ReactTraining/history) or an API-compatible alternative. Usable with any UI library. Comes with React and Preact adapters that implement pushstate links.
 
-Size: ≈3.6 KiB minified, including the `querystring` dependency and the optional Preact adapter.
+Size: ≈3.6 KiB minified, including the `querystring` dependency and one of the optional adapters.
 
 ## TOC
 
@@ -39,29 +39,27 @@ Most routing libraries are overwrought.
 Consider `react-router`:
 
 * ridiculous internal and API complexity
-* _insanely_ large size, around 40 KiB last time I checked
+* _insanely_ large; last I checked it was around 40 KiB minified
 * custom string-based dialect for path matching
 * hierarchical routing that makes top-level control impossible
 * routing through rendering:
   * makes it impossible to implement asynchronous top-level transitions, where the next page doesn't render until the data is ready
   * makes it impossible to pre-render the next page and slide it into view
   * hostile to isomorphic server-side rendering
-  * redirects as a side effect of rendering, which again is hostile to isomorphic apps, which want to handle routing _before_ rendering, and return 301/302/303 for redirects
+  * redirects are a side effect of rendering, which again is hostile to isomorphic apps, which want to handle routing _before_ rendering, and return 301/302/303 for redirects
 * missing support for URL queries; they don't even provide that as common-sense functions
-* bad rendering performance
+* inferior rendering performance
 
 Why regexps?
 
 * can see _exactly_ what it will match
-* don't have to learn the fine semantics of yet another string-based dialect
-* imperouter returns the regexp match -> no new concepts to understand
-* can use ES2018 named capture groups, which obsolete other ways of capturing named parameters such as `'/path/:id'` in string-based dialects or Imperouter own `{params: ['id']}`
+* don't have to learn fine semantics of yet another string-based dialect
+* imperouter returns regexp match, no new concepts to understand
+* can use ES2018 named capture groups, which obsolete other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects or Imperouter's own `{params: ['id']}`
 
 ## Installation
 
 ```js
-yarn add -E imperouter
-# or
 npm i -E imperouter
 ```
 
@@ -107,7 +105,7 @@ history.listen(onLocationChange)
 onLocationChange(history.location)
 ```
 
-On location changes, we probably want to render the UI. Subscribe to the history and imperatively render from from the top. Assuming you're using Imperouter with Preact, make sure to include a `Context` with the history; this is required for pushstate links.
+On location changes, we probably want to render the UI. Subscribe to the history and imperatively render from from the top. Assuming you're using Imperouter with React or Preact, make sure to include a `Context` with the history; this is required for pushstate links.
 
 ```js
 import * as React from 'preact'
@@ -332,7 +330,7 @@ ir.withSearch({pathname: '/one', query: {two: 'three'}})
 
 ### `Context`
 
-Part of the Preact adapter. Passes `history` to descendant links. Use this somewhere at the root of your view hierarchy.
+Part of the React and Preact adapters. Passes `history` to descendant links. Use this somewhere at the root of your view hierarchy.
 
 See the [usage](#usage) examples above. In short:
 
@@ -347,7 +345,7 @@ const history = createBrowserHistory()
 
 ### `Link`
 
-Part of the Preact adapter. Pushstate-enabled HTML link. Requires a `Context` with a `history`. See the [usage](#usage) examples above.
+Part of the React and Preact adapters. Pushstate-enabled HTML link. Requires a `Context` with a `history`. See the [usage](#usage) examples above.
 
 Accepted props:
 

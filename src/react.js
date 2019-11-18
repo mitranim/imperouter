@@ -1,6 +1,8 @@
-import {Component, h} from 'preact'
+import {Component, createElement, createContext} from 'react'
 import * as ir from './imperouter'
 import * as u from './utils'
+
+const HistoryContext = createContext()
 
 // Passes history to links.
 export function Context() {
@@ -10,14 +12,9 @@ export function Context() {
 
 const CP = Context.prototype = Object.create(Component.prototype)
 
-CP.getChildContext = function getChildContext() {
-  return {history: this.props.history}
-}
-
-CP.render = function render(props) {
-  const children = props.children
-  if (u.isArray(children)) return children[0]
-  return children
+CP.render = function render() {
+  const {history, children} = this.props
+  return createElement(HistoryContext.Provider, {value: history, children})
 }
 
 /*
@@ -37,7 +34,7 @@ https://github.com/ReactTraining/history. You MUST set it up, otherwise links
 won't activate. Example:
 
   import createBrowserHistory from 'history/es/createBrowserHistory'
-  import {Context} from 'imperouter/preact'
+  import {Context} from 'imperouter/react'
 
   const history = createBrowserHistory()
 
@@ -50,12 +47,14 @@ export function Link() {
   this.onClick = this.onClick.bind(this)
 }
 
+Link.contextType = HistoryContext
+
 const LP = Link.prototype = Object.create(Component.prototype)
 
 LP.constructor = Link
 
 LP.onClick = function onClick(event) {
-  const {context: {history}, props, props: {onClick}} = this
+  const {context: history, props, props: {onClick}} = this
   if (history) navigateOnClick(event, props, history)
   if (u.isFunction(onClick)) onClick(event)
 }
@@ -81,7 +80,7 @@ LP.render = function render() {
   props.href    = u.isObject(to) ? ir.encodeLocation(to) : to
   props.onClick = this.onClick
 
-  return h('a', props)
+  return createElement('a', props)
 }
 
 /** Utils **/
