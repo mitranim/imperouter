@@ -18,6 +18,12 @@ export function isRegExp(value) {
   return value instanceof RegExp
 }
 
+export function onlyString(value) {
+  if (value == null) return ''
+  validate(value, isString)
+  return value
+}
+
 export function validate(value, fun) {
   if (!fun(value)) {
     throw Error(`Expected ${show(value)} to satisfy test ${show(fun)}`)

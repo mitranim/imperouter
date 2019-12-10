@@ -3,6 +3,7 @@ import * as u from './utils'
 
 export function findRouteMatch(routes, pathname) {
   u.validate(routes, u.isArray)
+  pathname = u.onlyString(pathname)
   for (let i = 0; i < routes.length; i += 1) {
     const match = matchRoute(routes[i], pathname)
     if (match) return match
@@ -12,7 +13,7 @@ export function findRouteMatch(routes, pathname) {
 
 export function matchRoute(route, pathname) {
   u.validate(route, u.isObject)
-  u.validate(pathname, u.isString)
+  pathname = u.onlyString(pathname)
 
   const {path: regexp, params: paramKeys} = route
   u.validate(regexp, u.isRegExp)
@@ -44,26 +45,42 @@ export function matchRoute(route, pathname) {
 }
 
 export function decodeLocation(url) {
-  u.validate(url, u.isString)
+  url = u.onlyString(url)
   // Note: all parts of the regex are optional, it can never fail
   const [__, protocol, host, pathname, search, hash] = URL_REGEXP.exec(url)
-  return {protocol, host, pathname, search, query: decodeQuery(search), hash}
+  return {
+    protocol: protocol || '',
+    host: host || '',
+    pathname: pathname || '',
+    search: search || '',
+    query: decodeQuery(search || ''),
+    hash: hash || '',
+  }
 }
 
 export const URL_REGEXP = /^(?:(\w+:)[/][/])?([^,;!?/#\s]*)?([^,;!?#\s]*)?(\?[^,;!#\s]*)?(#[^,;!\s]*)?/
 
 export function encodeLocation(location) {
   u.validate(location, u.isObject)
+
   let {protocol, host, pathname, search, query, hash} = location
+  protocol = u.onlyString(protocol)
+  host     = u.onlyString(host)
+  pathname = u.onlyString(pathname)
+  hash     = u.onlyString(hash)
+
   if (query) search = encodeQuery(query)
+  else search = u.onlyString(search)
+
   return (
-    (protocol ? protocol + '//' : '') + (host || '') +
-    (pathname || '') + u.prepend('?', search) + u.prepend('#', hash)
+    (protocol ? protocol + '//' : '') + host +
+    pathname + u.prepend('?', search) + u.prepend('#', hash)
   )
 }
 
 export function decodeQuery(searchString) {
-  return querystring.decode((searchString || '').replace(/^[?]/, ''))
+  searchString = u.onlyString(searchString)
+  return querystring.decode(searchString.replace(/^[?]/, ''))
 }
 
 export function encodeQuery(query) {

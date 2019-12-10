@@ -181,12 +181,12 @@ Rather than plain URLs, both History and Imperouter use "locations", which are p
 
 ```js
 interface Location {
-  protocol: ?string
-  host:     ?string
-  pathname: ?string
-  search:   ?string
-  query:    ?{[string]: string | [string]}
-  hash:     ?string
+  protocol: string
+  host:     string
+  pathname: string
+  search:   string
+  query:    {[string]: string | [string]}
+  hash:     string
 }
 ```
 
