@@ -54,8 +54,12 @@ const LP = Link.prototype = Object.create(Component.prototype)
 LP.constructor = Link
 
 LP.onClick = function onClick(event) {
-  const {context: history, props, props: {onClick}} = this
-  if (history) navigateOnClick(event, props, history)
+  const {context: history, props, props: {target, onClick}} = this
+
+  if (history && isLeftClickEvent(event) && !isModifiedEvent(event) && target !== '_blank') {
+    navigateOnClick(event, props, history)
+  }
+
   if (u.isFunction(onClick)) onClick(event)
 }
 
@@ -87,7 +91,8 @@ LP.render = function render() {
 
 function navigateOnClick(event, props, history) {
   const {to, replace} = props
-  if (!isLeftClickEvent(event) || isModifiedEvent(event) || to == null) return
+  if (to == null) return
+
   event.preventDefault()
 
   const href = u.isObject(to) ? ir.encodeLocation(to) : to

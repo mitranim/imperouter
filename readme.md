@@ -12,6 +12,8 @@ Meant to be used with [`history`](https://github.com/ReactTraining/history) or a
 
 Size: ≈3.6 KiB minified, including the `querystring` dependency and one of the optional adapters.
 
+Browser compatibility: should work in IE9+.
+
 ## TOC
 
 * [Overview](#overview)
@@ -39,7 +41,7 @@ Most routing libraries are overwrought.
 Consider `react-router`:
 
 * ridiculous internal and API complexity
-* _insanely_ large; last I checked it was around 40 KiB minified
+* insanely large; last I checked it was around 40 KiB minified
 * custom string-based dialect for path matching
 * hierarchical routing that makes top-level control impossible
 * routing through rendering:
@@ -52,10 +54,10 @@ Consider `react-router`:
 
 Why regexps?
 
-* can see _exactly_ what it will match
+* can tell _exactly_ what it will match
 * don't have to learn fine semantics of yet another string-based dialect
 * imperouter returns regexp match, no new concepts to understand
-* can use ES2018 named capture groups, which obsolete other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects or Imperouter's own `{params: ['id']}`
+* ES2018 has named capture groups, which make obsolete other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects or Imperouter's own `{params: ['id']}`
 
 ## Installation
 
@@ -205,7 +207,7 @@ Finds the first match via `matchRoute`. Returns `undefined` if nothing matches.
 const routes = [
   {path: /^[/]$/},
   {path: /^[/]posts$/},
-  {path: /^[/]posts[/]([^/]+)$/},
+  {path: /^[/]posts[/]([^/]+)$/, params: ['id']},
   {path: /./},
 ]
 
@@ -213,7 +215,14 @@ ir.findRouteMatch(routes, '/')
 // ['/', route: {path: /^[/]$/}, params: {}]
 
 ir.findRouteMatch(routes, '/posts/100')
-// ['/posts/100', '100', route: {path: /^[/]posts/([^/]+)$/}, params: {}]
+/*
+[
+  '/posts/100',
+  '100',
+  route: {path: /^[/]posts/([^/]+)$/, params: ['id']},
+  params: {id: '100'}
+]
+*/
 ```
 
 ### `matchRoute(route, pathname) -> match`
@@ -222,6 +231,11 @@ Tests the route. The route must look like this:
 
 ```js
 const route = {path: /someRegexp/, params: ['someParamName']}
+
+interface Route {
+  path:   RegExp
+  params: ?[]string
+}
 ```
 
 * `path` is mandatory and must be a regexp
@@ -235,6 +249,17 @@ Pass `params` to give names to the positional capture groups in your regexp:
 ```js
 const route = {path: /^[/]posts[/]([^/]+)$/, params: ['id']}
 //                                ↑ capture group      ↑ group name
+
+const match = ir.matchRoute(route, '/posts/100')
+
+// ['/posts/100', '100', route: {...}, params: {id: '100'}]
+```
+
+If your environment supports ES2018 named capture groups, you can use them instead of `params: [...]`:
+
+```js
+const route = {path: /^[/]posts[/](?<id>[^/]+)$/}
+//                                ↑ named capture group
 
 const match = ir.matchRoute(route, '/posts/100')
 
@@ -294,20 +319,20 @@ ir.decodeQuery('?one=two&three=four')
 
 ### `encodeQuery(query) -> search`
 
-Converts a query dict into a search string. Same as `querystring.encode`, but also accepts `null` and `undefined`, omits `null` or `undefined` properties, and prepends `?` when the encoded search is not empty.
+Converts a query dict into a search string. Same as `querystring.encode`, but also accepts a `null` or `undefined` query, treating it as `{}`, and omits `null` or `undefined` properties. Does not prepend `?` (breaking change in `0.3.0`).
 
 ```js
 ir.encodeQuery()
 // ''
 
 ir.encodeQuery({one: 'two', three: 'four'})
-// '?one=two&three=four'
+// 'one=two&three=four'
 
 ir.encodeQuery({one: ['two', 'three']})
-// '?one=two&one=three'
+// 'one=two&one=three'
 
 ir.encodeQuery({one: 'two', three: null, four: undefined})
-// '?one=two'
+// 'one=two'
 ```
 
 ### `withQuery(location) -> location`
@@ -372,6 +397,24 @@ import {Link} from 'imperouter/preact'
 
   />
 ```
+
+## Changelog
+
+### `0.3.0`
+
+Minor but potentially breaking changes:
+
+* `<Link>` with `target='_blank'` acts like a standard `<a>`, does not trigger pushstate navigation
+* `encodeQuery` no longer prepends `?`
+* `params` now inherit from `null` rather than `Object.prototype`
+
+Added feature:
+
+* support ES2018 regexp named capture groups
+
+### `0.2.0`
+
+Added React adapter.
 
 ## Misc
 

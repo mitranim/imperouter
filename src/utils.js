@@ -55,11 +55,11 @@ export function omitNil(dict) {
   return out
 }
 
-export function prepend(char, value) {
-  validate(char, isString)
+export function prependIfMissing(prefix, value) {
+  validate(prefix, isString)
   if (value == null || value === '') return ''
   validate(value, isString)
-  return value[0] === char ? value : char + value
+  return value.indexOf(prefix) === 0 ? value : prefix + value
 }
 
 export function copy(dict) {

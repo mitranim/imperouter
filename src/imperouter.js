@@ -29,7 +29,9 @@ export function matchRoute(route, pathname) {
   const match = regexp.exec(pathname)
   if (!match) return undefined
 
-  const params = {}
+  // If exists, `match.groups` should be a null-prototype object with the
+  // captured values.
+  const params = match.groups || Object.create(null)
   if (paramKeys != null) {
     u.validate(paramKeys, u.isArray)
     for (let i = 0; i < paramKeys.length; i += 1) {
@@ -65,16 +67,13 @@ export function encodeLocation(location) {
 
   let {protocol, host, pathname, search, query, hash} = location
   protocol = u.onlyString(protocol)
-  host     = u.onlyString(host)
+  host = u.onlyString(host)
   pathname = u.onlyString(pathname)
-  hash     = u.onlyString(hash)
-
-  if (query) search = encodeQuery(query)
-  else search = u.onlyString(search)
+  search = u.prependIfMissing('?', query ? encodeQuery(query) : u.onlyString(search))
+  hash = u.prependIfMissing('#', u.onlyString(hash))
 
   return (
-    (protocol ? protocol + '//' : '') + host +
-    pathname + u.prepend('?', search) + u.prepend('#', hash)
+    (protocol ? protocol + '//' : '') + host + pathname + search + hash
   )
 }
 
@@ -84,7 +83,7 @@ export function decodeQuery(searchString) {
 }
 
 export function encodeQuery(query) {
-  return u.prepend('?', querystring.encode(u.omitNil(query)))
+  return querystring.encode(u.omitNil(query))
 }
 
 // Updates `location.query` to match `location.search`.
@@ -99,6 +98,6 @@ export function withQuery(location) {
 export function withSearch(location) {
   u.validate(location, u.isObject)
   location = u.copy(location)
-  location.search = encodeQuery(location.query)
+  location.search = u.prependIfMissing('?', encodeQuery(location.query))
   return location
 }
