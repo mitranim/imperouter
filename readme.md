@@ -400,6 +400,10 @@ import {Link} from 'imperouter/preact'
 
 ## Changelog
 
+### `0.3.1`
+
+Bugfix for Preact: fixed incorrect unwrapping of `context.history`.
+
 ### `0.3.0`
 
 Minor but potentially breaking changes:
