@@ -55,7 +55,7 @@ const LP = Link.prototype = Object.create(Component.prototype)
 LP.constructor = Link
 
 LP.onClick = function onClick(event) {
-  const {context: history, props, props: {target, onClick}} = this
+  const {context: {history}, props, props: {target, onClick}} = this
 
   if (history && isLeftClickEvent(event) && !isModifiedEvent(event) && target !== '_blank') {
     navigateOnClick(event, props, history)
