@@ -12,7 +12,7 @@ Meant to be used with [`history`](https://github.com/ReactTraining/history) or a
 
 Size: ≈3.6 KiB minified, including the `querystring` dependency and one of the optional adapters.
 
-Browser compatibility: should work in IE9+.
+Provided only as native modules (`.mjs`).
 
 ## TOC
 
@@ -112,7 +112,7 @@ On location changes, we probably want to render the UI. Subscribe to the history
 ```js
 import * as React from 'preact'
 import * as ir from 'imperouter'
-import {Context} from 'imperouter/preact'
+import {Context} from 'imperouter/preact.mjs'
 
 const rootNode = document.getElementById('root')
 
@@ -140,7 +140,7 @@ Note that you're free to include other side effects in the location handler. You
 Finally, for pushstate navigation, use the `Link` component:
 
 ```js
-import {Link} from 'imperouter/preact'
+import {Link} from 'imperouter/preact.mjs'
 
 function LandingPage() {
   return (
@@ -155,7 +155,7 @@ function LandingPage() {
 If you pass a [location](#location), the link will detect if it's "current" and set the `[aria-current=true]` attribute. Use it for styling.
 
 ```js
-import {Link} from 'imperouter/preact'
+import {Link} from 'imperouter/preact.mjs'
 
 function LandingPage({location}) {
   return (
@@ -361,7 +361,7 @@ See the [usage](#usage) examples above. In short:
 
 ```js
 import createBrowserHistory from 'history/es/createBrowserHistory'
-import {Context} from 'imperouter/preact'
+import {Context} from 'imperouter/preact.mjs'
 
 const history = createBrowserHistory()
 
@@ -375,7 +375,7 @@ Part of the React and Preact adapters. Pushstate-enabled HTML link. Requires a `
 Accepted props:
 
 ```js
-import {Link} from 'imperouter/preact'
+import {Link} from 'imperouter/preact.mjs'
 
 <Link
   // Location as string
@@ -399,6 +399,10 @@ import {Link} from 'imperouter/preact'
 ```
 
 ## Changelog
+
+### `0.4.0`
+
+Now provided only as native JS modules (`.mjs`).
 
 ### `0.3.1`
 

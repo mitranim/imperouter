@@ -1,20 +1,15 @@
 import {Component, createElement, createContext} from 'react'
-import * as ir from './imperouter'
-import * as u from './utils'
+import * as ir from './imperouter.mjs'
+import * as u from './utils.mjs'
 
 const HistoryContext = createContext()
 
 // Passes history to links.
-export function Context() {
-  if (!(this instanceof Context)) throw Error('Context must be invoked with `new`')
-  Component.apply(this, arguments)
-}
-
-const CP = Context.prototype = Object.create(Component.prototype)
-
-CP.render = function render() {
-  const {history, children} = this.props
-  return createElement(HistoryContext.Provider, {value: history, children})
+export class Context extends Component {
+  render() {
+    const {history, children} = this.props
+    return createElement(HistoryContext.Provider, {value: history, children})
+  }
 }
 
 /*
@@ -41,51 +36,48 @@ won't activate. Example:
   <Context history={history}> ... site content ... </Context>
 
 */
-export function Link() {
-  if (!(this instanceof Link)) throw Error('Link must be invoked with `new`')
-  Component.apply(this, arguments)
-  this.onClick = this.onClick.bind(this)
+export class Link extends Component {
+  constructor() {
+    super(...arguments)
+    this.onClick = this.onClick.bind(this)
+  }
+
+  onClick(event) {
+    const {context: history, props, props: {target, onClick}} = this
+
+    if (history && isLeftClickEvent(event) && !isModifiedEvent(event) && target !== '_blank') {
+      navigateOnClick(event, props, history)
+    }
+
+    if (u.isFunction(onClick)) onClick(event)
+  }
+
+  render() {
+    const props = u.copy(this.props)
+
+    const {to, location, exact} = props
+    props.to       = undefined
+    props.replace  = undefined
+    props.location = undefined
+    props.exact    = undefined
+
+    // Detect and mark "current path"
+    if (location != null) {
+      u.validate(location, u.isObject)
+      const current   = location.pathname
+      const pathname  = getLinkPathname(to)
+      const isCurrent = exact ? pathname === current : isSubpath(pathname, current)
+      props['aria-current'] = isCurrent || undefined
+    }
+
+    props.href    = u.isObject(to) ? ir.encodeLocation(to) : to
+    props.onClick = this.onClick
+
+    return createElement('a', props)
+  }
 }
 
 Link.contextType = HistoryContext
-
-const LP = Link.prototype = Object.create(Component.prototype)
-
-LP.constructor = Link
-
-LP.onClick = function onClick(event) {
-  const {context: history, props, props: {target, onClick}} = this
-
-  if (history && isLeftClickEvent(event) && !isModifiedEvent(event) && target !== '_blank') {
-    navigateOnClick(event, props, history)
-  }
-
-  if (u.isFunction(onClick)) onClick(event)
-}
-
-LP.render = function render() {
-  const props = u.copy(this.props)
-
-  const {to, location, exact} = props
-  props.to       = undefined
-  props.replace  = undefined
-  props.location = undefined
-  props.exact    = undefined
-
-  // Detect and mark "current path"
-  if (location != null) {
-    u.validate(location, u.isObject)
-    const current   = location.pathname
-    const pathname  = getLinkPathname(to)
-    const isCurrent = exact ? pathname === current : isSubpath(pathname, current)
-    props['aria-current'] = isCurrent || undefined
-  }
-
-  props.href    = u.isObject(to) ? ir.encodeLocation(to) : to
-  props.onClick = this.onClick
-
-  return createElement('a', props)
-}
 
 /** Utils **/
 

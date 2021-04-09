@@ -1,5 +1,5 @@
 import * as querystring from 'querystring'
-import * as u from './utils'
+import * as u from './utils.mjs'
 
 export function findRouteMatch(routes, pathname) {
   u.validate(routes, u.isArray)

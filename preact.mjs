@@ -1,23 +1,18 @@
 import {Component, h} from 'preact'
-import * as ir from './imperouter'
-import * as u from './utils'
+import * as ir from './imperouter.mjs'
+import * as u from './utils.mjs'
 
 // Passes history to links.
-export function Context() {
-  if (!(this instanceof Context)) throw Error('Context must be invoked with `new`')
-  Component.apply(this, arguments)
-}
+export class Context extends Component {
+  getChildContext() {
+    return {history: this.props.history}
+  }
 
-const CP = Context.prototype = Object.create(Component.prototype)
-
-CP.getChildContext = function getChildContext() {
-  return {history: this.props.history}
-}
-
-CP.render = function render(props) {
-  const children = props.children
-  if (u.isArray(children)) return children[0]
-  return children
+  render() {
+    const children = this.props.children
+    if (u.isArray(children)) return children[0]
+    return children
+  }
 }
 
 /*
@@ -44,48 +39,45 @@ won't activate. Example:
   <Context history={history}> ... site content ... </Context>
 
 */
-export function Link() {
-  if (!(this instanceof Link)) throw Error('Link must be invoked with `new`')
-  Component.apply(this, arguments)
-  this.onClick = this.onClick.bind(this)
-}
-
-const LP = Link.prototype = Object.create(Component.prototype)
-
-LP.constructor = Link
-
-LP.onClick = function onClick(event) {
-  const {context: {history}, props, props: {target, onClick}} = this
-
-  if (history && isLeftClickEvent(event) && !isModifiedEvent(event) && target !== '_blank') {
-    navigateOnClick(event, props, history)
+export class Link extends Component {
+  constructor() {
+    super(...arguments)
+    this.onClick = this.onClick.bind(this)
   }
 
-  if (u.isFunction(onClick)) onClick(event)
-}
+  onClick(event) {
+    const {context: {history}, props, props: {target, onClick}} = this
 
-LP.render = function render() {
-  const props = u.copy(this.props)
+    if (history && isLeftClickEvent(event) && !isModifiedEvent(event) && target !== '_blank') {
+      navigateOnClick(event, props, history)
+    }
 
-  const {to, location, exact} = props
-  props.to       = undefined
-  props.replace  = undefined
-  props.location = undefined
-  props.exact    = undefined
-
-  // Detect and mark "current path"
-  if (location != null) {
-    u.validate(location, u.isObject)
-    const current   = location.pathname
-    const pathname  = getLinkPathname(to)
-    const isCurrent = exact ? pathname === current : isSubpath(pathname, current)
-    props['aria-current'] = isCurrent || undefined
+    if (u.isFunction(onClick)) onClick(event)
   }
 
-  props.href    = u.isObject(to) ? ir.encodeLocation(to) : to
-  props.onClick = this.onClick
+  render() {
+    const props = u.copy(this.props)
 
-  return h('a', props)
+    const {to, location, exact} = props
+    props.to       = undefined
+    props.replace  = undefined
+    props.location = undefined
+    props.exact    = undefined
+
+    // Detect and mark "current path"
+    if (location != null) {
+      u.validate(location, u.isObject)
+      const current   = location.pathname
+      const pathname  = getLinkPathname(to)
+      const isCurrent = exact ? pathname === current : isSubpath(pathname, current)
+      props['aria-current'] = isCurrent || undefined
+    }
+
+    props.href    = u.isObject(to) ? ir.encodeLocation(to) : to
+    props.onClick = this.onClick
+
+    return h('a', props)
+  }
 }
 
 /** Utils **/

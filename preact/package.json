@@ -1,4 +1,0 @@
-{
-  "main": "../dist/preact.js",
-  "module": "../es/preact.js"
-}
