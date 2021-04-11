@@ -1,20 +1,17 @@
 {
   "name": "imperouter",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "main": "./imperouter.mjs",
-  "dependencies": {
-    "querystring": "^0.2"
-  },
-  "devDependencies": {
-    "eslint": "7.23.0"
-  },
-  "description": "Minimal pushstate routing for JS applications. Simple, low-level, imperative. Works with server-side rendering. Works with any UI library, comes with optional React and Preact adapters.",
+  "description": "Minimal pushstate routing for JS applications. Simple, low-level, imperative. Works with server-side rendering. Works with any UI library.",
   "keywords": [
     "pushstate",
     "router",
-    "routing",
-    "react",
-    "preact"
-  ]
+    "routing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mitranim/imperouter.git"
+  },
+  "license": "Unlicense"
 }

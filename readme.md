@@ -1,37 +1,45 @@
 ## Overview
 
-Minimal pushstate routing for JS applications.
+Minimal JS tools for:
 
-  * replaces `react-router` and similar alternatives
-  * works with any UI library
-  * gives you imperative control
-  * works well with server-side rendering
-  * plain regexps, not a custom string-based dialect
+  * URL/pathname routing.
+  * URL/query encoding.
 
-Meant to be used with [`history`](https://github.com/ReactTraining/history) or an API-compatible alternative. Usable with any UI library. Comes with React and Preact adapters that implement pushstate links.
+Characteristics:
 
-Size: ≈3.6 KiB minified, including the `querystring` dependency and one of the optional adapters.
+  * Imperative control.
+  * Abstract, usable for server routing or with any UI library.
+  * Lower-level than alternatives.
+  * Uses the [`URL` standard](https://url.spec.whatwg.org), regexps, and named capture groups. No custom dialects.
+  * Small and dependency-free (≈5 KiB _un_-minified).
 
-Provided only as native modules (`.mjs`).
+Provided as a native module (`.mjs`).
 
 ## TOC
 
 * [Overview](#overview)
 * [Why](#why)
-* [Installation](#installation)
 * [Usage](#usage)
 * [API](#api)
-  * [Location](#location)
-  * [`findRouteMatch`](#findroutematchroutes-pathname---match)
-  * [`matchRoute`](#matchrouteroute-pathname---match)
-  * [`decodeLocation`](#decodelocationurl---location)
-  * [`encodeLocation`](#encodelocationlocation---url)
-  * [`decodeQuery`](#decodequerysearch---query)
-  * [`encodeQuery`](#encodequeryquery---search)
-  * [`withQuery`](#withquerylocation---location)
-  * [`withSearch`](#withsearchlocation---location)
-  * [`Context`](#context)
-  * [`Link`](#link)
+  * [Types](#types)
+  * [`find(url, routes)`](#findurl-routes--route)
+  * [`match(url, route)`](#matchurl-route--bool)
+  * [`urlWithPathname(url, pathname)`](#urlwithpathnameurl-pathname--string)
+  * [`urlWithSearch(url, search)`](#urlwithsearchurl-search--string)
+  * [`urlWithHash(url, hash)`](#urlwithhashurl-hash--string)
+  * [`urlWithQuery(url, query)`](#urlwithqueryurl-query--string)
+  * [`urlAppendQuery(url, query)`](#urlappendqueryurl-query--string)
+  * [`urlPatchQuery(url, query)`](#urlpatchqueryurl-query--string)
+  * [`urlMutReplaceQuery(url, query)`](#urlmutreplacequeryurl-query--url)
+  * [`urlMutAppendQuery(url, query)`](#urlmutappendqueryurl-query--url)
+  * [`urlMutPatchQuery(url, query)`](#urlmutpatchqueryurl-query--url)
+  * [`searchReplace(search, query)`](#searchreplacesearch-query--urlsearchparams)
+  * [`searchAppend(search, query)`](#searchappendsearch-query--urlsearchparams)
+  * [`searchPatch(search, query)`](#searchpatchsearch-query--urlsearchparams)
+  * [`withUrl(url, fun, ...args)`](#withurlurl-fun-args--string)
+  * [`urlQuery(url)`](#urlqueryurl--string-string--string)
+  * [`searchQuery(search)`](#searchquerysearch--string-string--string)
+* [Changelog](#changelog)
 * [Misc](#misc)
 
 ## Why
@@ -40,365 +48,281 @@ Most routing libraries are overwrought.
 
 Consider `react-router`:
 
-* ridiculous internal and API complexity
-* insanely large; last I checked it was around 40 KiB minified
-* custom string-based dialect for path matching
-* hierarchical routing that makes top-level control impossible
-* routing through rendering:
-  * makes it impossible to implement asynchronous top-level transitions, where the next page doesn't render until the data is ready
-  * makes it impossible to pre-render the next page and slide it into view
-  * hostile to isomorphic server-side rendering
-  * redirects are a side effect of rendering, which again is hostile to isomorphic apps, which want to handle routing _before_ rendering, and return 301/302/303 for redirects
-* missing support for URL queries; they don't even provide that as common-sense functions
-* inferior rendering performance
+* Ridiculous internal and API complexity.
+* Insanely large; last I checked it was around 40 KiB minified.
+* Custom string-based dialect for path matching.
+* Hierarchical routing that makes top-level control impossible.
+* Routing through rendering:
+  * Makes it impossible to implement asynchronous top-level transitions, where the next page doesn't render until the data is ready.
+  * Makes it impossible to pre-render the next page and slide it into view.
+  * Hostile to isomorphic server-side rendering.
+  * Redirects are a side effect of rendering, which again is hostile to isomorphic apps, which want to handle routing _before_ rendering, and return 301/302/303 for redirects.
+* Missing support for URL queries; they don't even provide that as common-sense functions.
+* Slow rendering.
 
 Why regexps?
 
-* can tell _exactly_ what it will match
-* don't have to learn fine semantics of yet another string-based dialect
-* imperouter returns regexp match, no new concepts to understand
-* ES2018 has named capture groups, which make obsolete other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects or Imperouter's own `{params: ['id']}`
-
-## Installation
-
-```js
-npm i -E imperouter
-```
+* Can tell _exactly_ what it will match.
+* Don't have to learn fine semantics of yet another string-based dialect.
+* Imperouter returns the matched route. There are no new concepts to understand.
+* ES2018 has named capture groups, which obsoletes other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects.
 
 ## Usage
 
-* Write route config
-* Wire up a `history` listener
-* Wire up UI
-
-First, a route config:
-
-```js
-const routes = [
-  {path: /^[/]$},
-  {path: /^[/]posts[/]([^/]+)$/, params: ['id']},
-  {path: /./},
-]
+```sh
+npm i -E imperouter
 ```
 
-Imperouter just finds the matching route. It doesn't trigger rendering or any other side effects. Interpreting the route is _up to you_. Usually, routes refer to a view component. These examples use Preact.
-
 ```js
-const routes = [
-  {path: /^[/]$,                                 component: LandingPage},
-  {path: /^[/]posts[/]([^/]+)$/, params: ['id'], component: PostPage},
-  {path: /./,                                    component: Page404},
-]
-function LandingPage ({location})               {/* ... */}
-function PostPage    ({location, params: {id}}) {/* ... */}
-function Page404     ({location})               {/* ... */}
-```
-
-We'll also need [`history`](https://github.com/ReactTraining/history). It lets us subscribe to history _push_ events, not just _pop_ events. When Imperouter links push new locations, the application can react to that.
-
-```js
-import createBrowserHistory from 'history/es/createBrowserHistory'
-
-const history = createBrowserHistory()
-
-// Defined below
-history.listen(onLocationChange)
-
-onLocationChange(history.location)
-```
-
-On location changes, we probably want to render the UI. Subscribe to the history and imperatively render from from the top. Assuming you're using Imperouter with React or Preact, make sure to include a `Context` with the history; this is required for pushstate links.
-
-```js
-import * as React from 'preact'
 import * as ir from 'imperouter'
-import {Context} from 'imperouter/preact.mjs'
 
-const rootNode = document.getElementById('root')
+const routes = [
+  {path: /^[/]$/},
+  {path: /^[/]posts[/](?<slug>[^/]+)$/},
+]
 
-function onLocationChange(location) {
-  // Routes are defined above
-  const match = ir.findRouteMatch(routes, location.pathname)
+const url = new URL('https://example.com/posts/one-two-three')
+const route = ir.find(url, routes)
 
-  // Note: `component` in the route is an application-level convention, not
-  // dictated by the router. However, `params` are provided by the router.
-  const {route: {component: Component}, params} = match
+console.log(route)
+// {path: /^[/]posts[/](?<slug>[^/]+)$/}
 
-  const element = (
-    <Context history={history}>
-      <div id='root'>
-        <Component location={location} params={params} />
-      </div>
-    </Context>
-  )
-  React.render(element, rootNode, rootNode.parent)
-}
+console.log(url.searchParams.get('slug'))
+// 'one-two-three'
 ```
 
-Note that you're free to include other side effects in the location handler. You can trivially implement asynchronous transitions by asking components to fetch data before rendering them. This doesn't need any special library support.
+Imperouter finds the matching route and sets captured params into the `.searchParams` of the provided `URL`. There are no other side effects. Interpreting the route is _up to you_.
 
-Finally, for pushstate navigation, use the `Link` component:
+One useful pattern is to put a handler function into every route:
 
 ```js
-import {Link} from 'imperouter/preact.mjs'
+const routes = [
+  {path: /^[/]$/,                       fun: Index},
+  {path: /^[/]posts[/](?<slug>[^/]+)$/, fun: Post},
+]
 
-function LandingPage() {
-  return (
-    <div>
-      <Link to='/'>Home</Link>
-      <Link to='/posts/100'>First Post</Link>
-    </div>
-  )
-}
+const url = new URL('https://example.com/posts/one-two-three')
+const route = ir.find(url, routes)
+route.fun(url)
+
+function Index(url) {console.log(url)}
+function Post(url) {console.log(url, url.searchParams.get('slug'))}
 ```
 
-If you pass a [location](#location), the link will detect if it's "current" and set the `[aria-current=true]` attribute. Use it for styling.
-
-```js
-import {Link} from 'imperouter/preact.mjs'
-
-function LandingPage({location}) {
-  return (
-    <div>
-      <Link to='/' exact location={location}>Home</Link>
-      <Link to='/posts/100' location={location}>First Post</Link>
-    </div>
-  )
-}
-```
+You're free to include side effects in your route handlers, such as UI updates. You can trivially implement asynchronous transitions. This doesn't need any special library support.
 
 ## API
 
-All examples in this section imply an import:
+All examples imply an import:
 
 ```js
 import * as ir from 'imperouter'
-// or
-const ir = require('imperouter')
 ```
 
-### Location
+### Types
 
-Rather than plain URLs, both History and Imperouter use "locations", which are plain dicts that look like `window.location`:
+Imperouter uses standard `URL` objects. Spec: https://url.spec.whatwg.org
 
-```js
-interface Location {
-  protocol: string
-  host:     string
-  pathname: string
-  search:   string
-  query:    {[string]: string | [string]}
-  hash:     string
-}
-```
+In addition, it uses the convention that routes are plain objects whose `path` is a regexp. They may contain arbitrary other properties.
 
-The "query" is an Imperouter extension. When interfacing with History and `window.location`, use these functions for query support:
+### `find(url, routes)` → `route`
 
-* [`decodeQuery`](#decodequerysearch---query)
-* [`encodeQuery`](#encodequeryquery---search)
-* [`withQuery`](#withquerylocation---location)
-* [`withSearch`](#withsearchlocation---location)
+Takes a `URL` object and a list of routes. Returns the first route whose `path` regexp matches the _pathname_ of the provided URL. All other URL properties are ignored.
 
-### `findRouteMatch(routes, pathname) -> match`
-
-Finds the first match via `matchRoute`. Returns `undefined` if nothing matches.
+Matched _named_ captures are included into `url.searchParams`, mutating the provided URL. Named capture groups are an ES2018 feature.
 
 ```js
 const routes = [
-  {path: /^[/]$/},
-  {path: /^[/]posts$/},
-  {path: /^[/]posts[/]([^/]+)$/, params: ['id']},
-  {path: /./},
+  {path: /^[/]posts[/](?<slug>[^/]+)$/},
 ]
 
-ir.findRouteMatch(routes, '/')
-// ['/', route: {path: /^[/]$/}, params: {}]
+const url = new URL('https://example.com/posts/one-two-three?four=five#six')
+const route = ir.find(url, routes)
 
-ir.findRouteMatch(routes, '/posts/100')
-/*
-[
-  '/posts/100',
-  '100',
-  route: {path: /^[/]posts/([^/]+)$/, params: ['id']},
-  params: {id: '100'}
-]
-*/
+console.log(url.searchParams.get('slug'))
+// 'one-two-three'
 ```
 
-### `matchRoute(route, pathname) -> match`
+### `match(url, route)` → `bool`
 
-Tests the route. The route must look like this:
+Returns true if the route matches the URL's `pathname`. If the route was matched, the URL's `searchParams` may be mutated, adding the substrings matched by named capture groups.
 
 ```js
-const route = {path: /someRegexp/, params: ['someParamName']}
+const route = {path: /^[/]posts[/](?<slug>[^/]+)$/}
 
-interface Route {
-  path:   RegExp
-  params: ?[]string
+const url = new URL('https://example.com')
+console.log(ir.match(url, route), url.searchParams.get('slug'))
+// false, null
+
+url.href = 'https://example.com/posts/one-two-three'
+console.log(ir.match(url, route), url.searchParams.get('slug'))
+// true, 'one-two-three'
+```
+
+### `urlWithPathname(url, pathname)` → `string`
+
+Swaps the URL's pathname without affecting other properties. Returns a string. The input may be `string | URL` and is not mutated. The input may be "relative": without an origin.
+
+```js
+console.log(ir.urlWithPathname('/one?two=three#four', 'five'))
+// '/five/?two=three#four'
+```
+
+### `urlWithSearch(url, search)` → `string`
+
+Like `urlWithPathname`, but swaps the URL's search string:
+
+```js
+console.log(ir.urlWithSearch('/one?two=three#four', 'five'))
+// '/one/?five#four'
+```
+
+### `urlWithHash(url, hash)` → `string`
+
+Like `urlWithPathname`, but swaps the URL's hash string:
+
+```js
+console.log(ir.urlWithHash('/one?two=three#four', 'five'))
+// '/one?two=three#five'
+```
+
+### `urlWithQuery(url, query)` → `string`
+
+Replaces the URL's search params with the provided query, which must be a dict. Encoding rules:
+
+* `null` and `undefined` are ignored.
+* `Array` is appended as a collection (each value separately).
+* `Date` is encoded via `.toISOString()`.
+* Primitives are automatically stringified.
+* Other types are rejected with an exception, to prevent gotchas.
+
+Returns a string. The input may be `string | URL` and is not mutated. The input may be "relative": without an origin.
+
+```js
+const query = {
+  five: 'six',
+  seven: ['eight', 'nine'],
+  ten: undefined,
 }
+
+console.log(ir.urlWithQuery('/one?two=three#four', query))
+// '/one?five=six&seven=eight&seven=nine#four'
 ```
 
-* `path` is mandatory and must be a regexp
-* `params` are optional; if provided, must be a list of strings
-* other properties are ignored
+### `urlAppendQuery(url, query)` → `string`
 
-Returns the result of calling `route.path.exec(pathname)`, additionally assigning the original `route` and named `params`. See the match structure in the [`RegExp.prototype.exec`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/exec) docs.
-
-Pass `params` to give names to the positional capture groups in your regexp:
+Like `urlWithQuery`, but preserves any previously-existing search params, appending the query to them.
 
 ```js
-const route = {path: /^[/]posts[/]([^/]+)$/, params: ['id']}
-//                                ↑ capture group      ↑ group name
-
-const match = ir.matchRoute(route, '/posts/100')
-
-// ['/posts/100', '100', route: {...}, params: {id: '100'}]
-```
-
-If your environment supports ES2018 named capture groups, you can use them instead of `params: [...]`:
-
-```js
-const route = {path: /^[/]posts[/](?<id>[^/]+)$/}
-//                                ↑ named capture group
-
-const match = ir.matchRoute(route, '/posts/100')
-
-// ['/posts/100', '100', route: {...}, params: {id: '100'}]
-```
-
-### `decodeLocation(url) -> location`
-
-Parses a URL string into a [location](#location) (see above) with a decoded query.
-
-```js
-const location = ir.decodeLocation('/one?two=three#four')
-/*
-{
-  pathname: '/one',
-  search: '?two=three',
-  query: {two: 'three'},
-  hash: '#four',
+const query = {
+  five: 'six',
+  seven: ['eight', 'nine'],
+  ten: undefined,
 }
-*/
+
+console.log(ir.urlAppendQuery('/one?two=three#four', query))
+// '/one?two=three&five=six&seven=eight&seven=nine#four'
 ```
 
-### `encodeLocation(location) -> url`
+### `urlPatchQuery(url, query)` → `string`
 
-Reverse of `decodeLocation`. Converts a [location](#location) into a URL. Automatically encodes `location.query`, which takes priority over `location.search`.
+Like `urlWithQuery`, but "patches" the search params, by preserving any which don't occur in the provided query, but replacing any that do occur.
 
 ```js
-const url0 = ir.encodeLocation({
-  pathname: '/one',
-  search: '?two=three',
-  hash: '#four',
+const query = {
+  two: ['six', 'seven'],
+  eight: 'nine',
+}
+
+console.log(ir.urlPatchQuery('/one?two=three&four=five', query))
+// '/one?four=five&two=six&two=seven&eight=nine'
+```
+
+### `urlMutReplaceQuery(url, query)` → `URL`
+
+Like `urlWithQuery` but mutates the provided `URL`, returning the same instance.
+
+### `urlMutAppendQuery(url, query)` → `URL`
+
+Like `urlAppendQuery` but mutates the provided `URL`, returning the same instance.
+
+### `urlMutPatchQuery(url, query)` → `URL`
+
+Like `urlPatchQuery` but mutates the provided `URL`, returning the same instance.
+
+### `searchReplace(search, query)` → `URLSearchParams`
+
+Mutates the provided `URLSearchParams`, replacing its params with the provided query, as described in `urlWithQuery`.
+
+```js
+const query = {
+  five: 'six',
+  seven: ['eight', 'nine'],
+  ten: undefined,
+}
+
+const search = new URLSearchParams('two=three')
+ir.searchReplace(search, query)
+
+console.log(search.toString())
+// 'five=six&seven=eight&seven=nine'
+```
+
+### `searchAppend(search, query)` → `URLSearchParams`
+
+Mutates the provided `URLSearchParams`, appending the params from the provided query, as described in `urlAppendQuery`.
+
+### `searchPatch(search, query)` → `URLSearchParams`
+
+Mutates the provided `URLSearchParams`, patching it by the provided query, as described in `urlPatchQuery`.
+
+### `withUrl(url, fun, ...args)` → `string`
+
+Runs a function with a temporary URL instance parsed from the input, and returns the resulting string. The function should mutate the URL.
+
+The function is `ƒ(url, ...args) → (void | URL)`. The external input may be `string | URL` and is _not_ mutated.
+
+```js
+const url = withUrl('/one?two#three', function(url) {
+  url.search = 'four'
+  url.hash = 'five'
 })
-// '/one?two=three#four'
-
-const url1 = ir.encodeLocation({
-  pathname: '/one',
-  query: {two: 'three'},
-  hash: '#four',
-})
-// '/one?two=three#four'
+console.log(url)
+// '/one?four#five'
 ```
 
-### `decodeQuery(search) -> query`
+### `urlQuery(url)` → `{[string]: string | [string]}`
 
-Converts a search string into a query dict. Same as `querystring.decode`, but also accepts `null` and `undefined` and ignores the starting `?`, if any.
+Extracts the URL's search params as a query dict. Opposite of `urlWithQuery`. The input may be `string | URL`.
 
 ```js
-ir.decodeQuery()
-// {}
-
-ir.decodeQuery('?one=two&three=four')
-// {one: 'two', three: 'four'}
-
-// ir.decodeQuery('one=two&one=three')
-// {one: ['two', 'three']}
+console.log(ir.urlQuery('/one?five=six&seven=eight&seven=nine#four'))
+// { five: [ 'six' ], seven: [ 'eight', 'nine' ] }
 ```
 
-### `encodeQuery(query) -> search`
+### `searchQuery(search)` → `{[string]: string | [string]}`
 
-Converts a query dict into a search string. Same as `querystring.encode`, but also accepts a `null` or `undefined` query, treating it as `{}`, and omits `null` or `undefined` properties. Does not prepend `?` (breaking change in `0.3.0`).
-
-```js
-ir.encodeQuery()
-// ''
-
-ir.encodeQuery({one: 'two', three: 'four'})
-// 'one=two&three=four'
-
-ir.encodeQuery({one: ['two', 'three']})
-// 'one=two&one=three'
-
-ir.encodeQuery({one: 'two', three: null, four: undefined})
-// 'one=two'
-```
-
-### `withQuery(location) -> location`
-
-Returns a version of `location` where `location.query` is updated to match `location.search`.
+Converts the search params, which must be `URLSearchParams`, into a query dict. Opposite of `searchReplace`.
 
 ```js
-ir.withQuery({pathname: '/one', search: '?two=three'})
-// {pathname: '/one', search: '?two=three', query: {two: 'three'}}
-```
-
-### `withSearch(location) -> location`
-
-Returns a version of `location` where `location.search` is updated to match `location.query`. Use this before passing the `location` to History methods which support structured locations, but not queries.
-
-```js
-ir.withSearch({pathname: '/one', query: {two: 'three'}})
-// {pathname: '/one', search: '?two=three', query: {two: 'three'}}
-```
-
-### `Context`
-
-Part of the React and Preact adapters. Passes `history` to descendant links. Use this somewhere at the root of your view hierarchy.
-
-See the [usage](#usage) examples above. In short:
-
-```js
-import createBrowserHistory from 'history/es/createBrowserHistory'
-import {Context} from 'imperouter/preact.mjs'
-
-const history = createBrowserHistory()
-
-<Context history={history}> ... site content ... </Context>
-```
-
-### `Link`
-
-Part of the React and Preact adapters. Pushstate-enabled HTML link. Requires a `Context` with a `history`. See the [usage](#usage) examples above.
-
-Accepted props:
-
-```js
-import {Link} from 'imperouter/preact.mjs'
-
-<Link
-  // Location as string
-  to='/one?two=three#four'
-
-  // Structured location
-  to={{pathname: '/one', query: {two: 'three'}, hash: '#four', state: {}}}
-
-  // Optional: use `history.replace` rather than `history.push`
-  replace
-
-  // Optional, used to detect "current" state.
-  // "Current" links have an `aria-current='true'` attribute.
-  location={history.location}
-
-  // Optional; if true, the "current" detection will match the pathname
-  // exactly. By default, it also matches subpaths. Use this for '/'.
-  exact
-
-  />
+const search = new URLSearchParams('five=six&seven=eight&seven=nine')
+console.log(searchQuery(search))
+// { five: [ 'six' ], seven: [ 'eight', 'nine' ] }
 ```
 
 ## Changelog
+
+### `0.5.0`
+
+Super breaking!
+
+No more UI adapters.
+
+No more `'history'` integration.
+
+Using the native `URL` interface instead of `'history'`'s "location" dicts.
+
+Added the previously-missing license (unlicense).
 
 ### `0.4.0`
 
@@ -423,6 +347,10 @@ Added feature:
 ### `0.2.0`
 
 Added React adapter.
+
+## License
+
+https://unlicense.org
 
 ## Misc
 

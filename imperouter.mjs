@@ -1,103 +1,171 @@
-import * as querystring from 'querystring'
-import * as u from './utils.mjs'
+/** Public API **/
 
-export function findRouteMatch(routes, pathname) {
-  u.validate(routes, u.isArray)
-  pathname = u.onlyString(pathname)
-  for (let i = 0; i < routes.length; i += 1) {
-    const match = matchRoute(routes[i], pathname)
-    if (match) return match
-  }
-  return undefined
+export function find(url, routes) {
+  validUrl(url)
+  return routes.find(matchBy, url)
 }
 
-export function matchRoute(route, pathname) {
-  u.validate(route, u.isObject)
-  pathname = u.onlyString(pathname)
+export function match(url, route) {
+  validUrl(url)
+  validRoute(route)
+  const {path: reg} = route
 
-  const {path: regexp, params: paramKeys} = route
-  u.validate(regexp, u.isRegExp)
+  const match = reg.exec(url.pathname)
+  if (!match) return false
 
-  // Note: regexps with a "global" flag preserve state between calls to `.exec`
-  // or `.test`. They also produce surprising output with
-  // `String.prototype.match`. There are ways to reset the state, but it seems
-  // cleaner to avoid the hazard in the first place.
-  if (regexp.global) {
-    throw Error(`Path regexps must not have a global flag; got ${regexp}`)
-  }
-
-  const match = regexp.exec(pathname)
-  if (!match) return undefined
-
-  // If exists, `match.groups` should be a null-prototype object with the
-  // captured values.
-  const params = match.groups || Object.create(null)
-  if (paramKeys != null) {
-    u.validate(paramKeys, u.isArray)
-    for (let i = 0; i < paramKeys.length; i += 1) {
-      const key = paramKeys[i]
-      u.validate(key, u.isString)
-      params[key] = match[i + 1]
+  const {groups} = match
+  if (groups) {
+    for (const key in groups) {
+      const val = groups[key]
+      if (isStr(val)) url.searchParams.set(key, val)
     }
   }
 
-  match.route = route
-  match.params = params
-  return match
+  return true
 }
 
-export function decodeLocation(url) {
-  url = u.onlyString(url)
-  // Note: all parts of the regex are optional, it can never fail
-  const [__, protocol, host, pathname, search, hash] = URL_REGEXP.exec(url)
-  return {
-    protocol: protocol || '',
-    host: host || '',
-    pathname: pathname || '',
-    search: search || '',
-    query: decodeQuery(search || ''),
-    hash: hash || '',
+export function urlWithPathname (url, pathname) {return withUrl(url, setPathname, pathname)}
+export function urlWithSearch   (url, search)   {return withUrl(url, setSearch,   search)}
+export function urlWithHash     (url, hash)     {return withUrl(url, setHash,     hash)}
+
+export function urlWithQuery   (url, query) {return withUrl(url, withUrlSearch, searchReplace, query)}
+export function urlAppendQuery (url, query) {return withUrl(url, withUrlSearch, searchAppend,  query)}
+export function urlPatchQuery  (url, query) {return withUrl(url, withUrlSearch, searchPatch,   query)}
+
+export function urlMutReplaceQuery (url, query) {return withUrlSearch(url, searchReplace, query)}
+export function urlMutAppendQuery  (url, query) {return withUrlSearch(url, searchAppend,  query)}
+export function urlMutPatchQuery   (url, query) {return withUrlSearch(url, searchPatch,   query)}
+
+export function searchReplace (search, query) {searchClear(search); return searchAppend(search, query)}
+export function searchAppend  (search, query) {return searchUpdate(search, searchAppendProp, query)}
+export function searchPatch   (search, query) {return searchUpdate(search, searchPatchProp, query)}
+
+export function withUrl(url, fun, ...args) {
+  url = toUrl(url)
+  return urlStr(fun(url, ...args) || url)
+}
+
+export function urlQuery(url) {
+  return searchQuery((isInst(url, URL) ? url : toUrl(url)).searchParams)
+}
+
+export function searchQuery(search) {
+  validSearch(search)
+  const out = {}
+  for (const key of search.keys()) out[key] = search.getAll(key)
+  return out
+}
+
+/** Internal Utils **/
+
+function matchBy(route) {return match(this, route)}
+
+/*
+Note: regexps with a "global" flag preserve state between calls to `.exec` or
+`.test`. They also produce surprising output with `String.prototype.match`.
+There are ways to reset the state, but it seems cleaner to avoid the hazard in
+the first place.
+*/
+function validRoute(val) {
+  valid(val, isDict)
+  const {path: reg} = val
+  if (!isReg(reg)) throw Error(`routes must have a regexp ".path", got ${show(val)}`)
+  if (reg.global) throw Error(`route regexps must not have a global flag, got ${reg}`)
+}
+
+function toUrl(val) {
+  if (isStr(val)) return new URL(val, 'file:')
+  validUrl(val)
+  return new URL(val)
+}
+
+function urlStr(val) {
+  if (val.protocol === 'file:') return val.pathname + val.search + val.hash
+  return val.href
+}
+
+function withUrlSearch(url, fun, ...args) {
+  validUrl(url)
+  fun(url.searchParams, ...args)
+  return url
+}
+
+function setPathname(url, pathname) {url.pathname = str(pathname)}
+function setSearch(url, search) {url.search = str(search)}
+function setHash(url, hash) {url.hash = str(hash)}
+
+function searchClear(search) {
+  validSearch(search)
+  search.forEach(searchDelete)
+}
+
+function searchDelete (_val, key, search) {
+  validSearch(search)
+  search.delete(key)
+}
+
+function searchUpdate(search, fun, query) {
+  query = dict(query)
+  for (const key in query) fun(search, key, query[key])
+  return search
+}
+
+function searchPatchProp(search, key, val) {
+  search.delete(key)
+  searchAppendProp(search, key, val)
+}
+
+function searchAppendProp(search, key, val) {
+  if (isArr(val)) for (const elem of val) searchAppendVal(search, key, elem)
+  else searchAppendVal(search, key, val)
+}
+
+function searchAppendVal(search, key, val) {
+  if (isNil(val)) return
+  if (isDate(val)) {
+    search.append(key, val.toISOString())
+    return
+  }
+  valid(val, isPrim)
+  search.append(key, val)
+}
+
+function isNil(val)       {return val == null}
+function isStr(val)       {return typeof val === 'string'}
+function isPrim(val)      {return !isComp(val)}
+function isComp(val)      {return isObj(val) || isFun(val)}
+function isFun(val)       {return typeof val === 'function'}
+function isObj(val)       {return val !== null && typeof val === 'object'}
+function isArr(val)       {return isInst(val, Array)}
+function isReg(val)       {return isInst(val, RegExp)}
+function isDate(val)      {return isInst(val, Date)}
+function isInst(val, Cls) {return isComp(val) && val instanceof Cls}
+
+function isDict(val) {
+  if (!isObj(val)) return false
+  const proto = Object.getPrototypeOf(val)
+  return proto === null || proto === Object.prototype
+}
+
+function str(val)        {return isNil(val) ? '' : only(val, isStr)}
+function dict(val)       {return isNil(val) ? {} : only(val, isDict)}
+function only(val, test) {valid(val, test); return val}
+
+function valid(val, test) {
+  if (!test(val)) throw Error(`expected ${show(val)} to satisfy test ${show(test)}`)
+}
+
+function validInst(val, Cls) {
+  if (!isInst(val, Cls)) {
+    throw Error(`expected ${show(val)} to be an instance of ${show(Cls)}`)
   }
 }
 
-export const URL_REGEXP = /^(?:(\w+:)[/][/])?([^,;!?/#\s]*)?([^,;!?#\s]*)?(\?[^,;!#\s]*)?(#[^,;!\s]*)?/
+function validUrl(val)    {validInst(val, URL)}
+function validSearch(val) {validInst(val, URLSearchParams)}
 
-export function encodeLocation(location) {
-  u.validate(location, u.isObject)
-
-  let {protocol, host, pathname, search, query, hash} = location
-  protocol = u.onlyString(protocol)
-  host = u.onlyString(host)
-  pathname = u.onlyString(pathname)
-  search = u.prependIfMissing('?', query ? encodeQuery(query) : u.onlyString(search))
-  hash = u.prependIfMissing('#', u.onlyString(hash))
-
-  return (
-    (protocol ? protocol + '//' : '') + host + pathname + search + hash
-  )
-}
-
-export function decodeQuery(searchString) {
-  searchString = u.onlyString(searchString)
-  return querystring.decode(searchString.replace(/^[?]/, ''))
-}
-
-export function encodeQuery(query) {
-  return querystring.encode(u.omitNil(query))
-}
-
-// Updates `location.query` to match `location.search`.
-export function withQuery(location) {
-  u.validate(location, u.isObject)
-  location = u.copy(location)
-  location.query = decodeQuery(location.search)
-  return location
-}
-
-// Updates `location.search` to match `location.query`.
-export function withSearch(location) {
-  u.validate(location, u.isObject)
-  location = u.copy(location)
-  location.search = u.prependIfMissing('?', encodeQuery(location.query))
-  return location
+function show(val) {
+  if (isFun(val) && val.name) return val.name
+  if (isArr(val) || isDict(val) || isStr(val)) return JSON.stringify(val)
+  return String(val)
 }
