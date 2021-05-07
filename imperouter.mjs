@@ -67,7 +67,7 @@ There are ways to reset the state, but it seems cleaner to avoid the hazard in
 the first place.
 */
 function validRoute(val) {
-  valid(val, isDict)
+  valid(val, isStruct)
   const {path: reg} = val
   if (!isReg(reg)) throw Error(`routes must have a regexp ".path", got ${show(val)}`)
   if (reg.global) throw Error(`route regexps must not have a global flag, got ${reg}`)
@@ -99,7 +99,7 @@ function searchClear(search) {
   search.forEach(searchDelete)
 }
 
-function searchDelete (_val, key, search) {
+function searchDelete(_val, key, search) {
   validSearch(search)
   search.delete(key)
 }
@@ -139,6 +139,7 @@ function isObj(val)       {return val !== null && typeof val === 'object'}
 function isArr(val)       {return isInst(val, Array)}
 function isReg(val)       {return isInst(val, RegExp)}
 function isDate(val)      {return isInst(val, Date)}
+function isStruct(val)    {return isObj(val) && !isArr(val) && !isInst(val, String)}
 function isInst(val, Cls) {return isComp(val) && val instanceof Cls}
 
 function isDict(val) {

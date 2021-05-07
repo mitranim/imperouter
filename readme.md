@@ -312,6 +312,10 @@ console.log(searchQuery(search))
 
 ## Changelog
 
+### `0.5.1`
+
+Allow routes to be non-plain objects.
+
 ### `0.5.0`
 
 Super breaking!
