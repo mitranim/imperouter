@@ -2,18 +2,19 @@
 
 Minimal JS tools for:
 
-  * URL/pathname routing.
+  * String-and-regexp routing.
   * URL/query encoding.
 
 Characteristics:
 
   * Imperative control.
-  * Abstract, usable for server routing or with any UI library.
+  * Abstract, usable for server-side routing or with any UI library.
   * Lower-level than alternatives.
-  * Uses the [`URL` standard](https://url.spec.whatwg.org), regexps, and named capture groups. No custom dialects.
+  * Uses plain strings, regexps, and named capture groups. No custom dialects.
+  * Has various utils for URL encoding/decoding. The kind of stuff you wish the [`URL` standard](https://url.spec.whatwg.org) had.
   * Small and dependency-free (≈5 KiB _un_-minified).
 
-Provided as a native module (`.mjs`).
+Tiny, dependency-free, single file, native module.
 
 ## TOC
 
@@ -22,8 +23,7 @@ Provided as a native module (`.mjs`).
 * [Usage](#usage)
 * [API](#api)
   * [Types](#types)
-  * [`find(url, routes)`](#findurl-routes--route)
-  * [`match(url, route)`](#matchurl-route--bool)
+  * [`find(str, routes)`](#findstr-routes--route-groups)
   * [`urlWithPathname(url, pathname)`](#urlwithpathnameurl-pathname--string)
   * [`urlWithSearch(url, search)`](#urlwithsearchurl-search--string)
   * [`urlWithHash(url, hash)`](#urlwithhashurl-hash--string)
@@ -65,9 +65,11 @@ Why regexps?
 * Can tell _exactly_ what it will match.
 * Don't have to learn fine semantics of yet another string-based dialect.
 * Imperouter returns the matched route. There are no new concepts to understand.
-* ES2018 has named capture groups, which obsoletes other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects.
+* ES2018 has named capture groups, which obsolesces other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects.
 
 ## Usage
+
+Install with NPM, or import by URL:
 
 ```sh
 npm i -E imperouter
@@ -75,38 +77,45 @@ npm i -E imperouter
 
 ```js
 import * as ir from 'imperouter'
-
-const routes = [
-  {path: /^[/]$/},
-  {path: /^[/]posts[/](?<slug>[^/]+)$/},
-]
-
-const url = new URL('https://example.com/posts/one-two-three')
-const route = ir.find(url, routes)
-
-console.log(route)
-// {path: /^[/]posts[/](?<slug>[^/]+)$/}
-
-console.log(url.searchParams.get('slug'))
-// 'one-two-three'
+import * as ir from 'https://cdn.jsdelivr.net/npm/imperouter@0.6.0/jol.mjs'
 ```
 
-Imperouter finds the matching route and sets captured params into the `.searchParams` of the provided `URL`. There are no other side effects. Interpreting the route is _up to you_.
+Example:
+
+```js
+import * as ir from 'imperouter'
+
+const routes = [
+  {reg: /^[/]$/},
+  {reg: /^[/]posts[/](?<slug>[^/]+)$/},
+]
+
+const path = '/posts/one-two-three'
+const {route, groups} = ir.find(path, routes)
+
+console.log(route)
+// {reg: /^[/]posts[/](?<slug>[^/]+)$/}
+
+console.log(groups)
+// {slug: 'one-two-three'}
+```
+
+Imperouter returns the first matching route and named captures from its regexp. Interpreting the route is _up to you_.
 
 One useful pattern is to put a handler function into every route:
 
 ```js
 const routes = [
-  {path: /^[/]$/,                       fun: Index},
-  {path: /^[/]posts[/](?<slug>[^/]+)$/, fun: Post},
+  {reg: /^[/]$/,                       fun: Index},
+  {reg: /^[/]posts[/](?<slug>[^/]+)$/, fun: Post},
 ]
 
-const url = new URL('https://example.com/posts/one-two-three')
-const route = ir.find(url, routes)
-route.fun(url)
+const path = '/posts/one-two-three'
+const {route, groups} = ir.find(path, routes)
+route.fun(groups)
 
-function Index(url) {console.log(url)}
-function Post(url) {console.log(url, url.searchParams.get('slug'))}
+function Index() {}
+function Post({slug}) {console.log(slug)}
 ```
 
 You're free to include side effects in your route handlers, such as UI updates. You can trivially implement asynchronous transitions. This doesn't need any special library support.
@@ -123,40 +132,24 @@ import * as ir from 'imperouter'
 
 Imperouter uses standard `URL` objects. Spec: https://url.spec.whatwg.org
 
-In addition, it uses the convention that routes are plain objects whose `path` is a regexp. They may contain arbitrary other properties.
+In addition, it uses the convention that routes are plain objects whose `reg` is a regexp. They may contain arbitrary other properties.
 
-### `find(url, routes)` → `route`
+### `find(str, routes)` → `{route, groups}`
 
-Takes a `URL` object and a list of routes. Returns the first route whose `path` regexp matches the _pathname_ of the provided URL. All other URL properties are ignored.
+Takes a string and a list of routes. Finds the first route whose `reg` regexp matches the string.
 
-Matched _named_ captures are included into `url.searchParams`, mutating the provided URL. Named capture groups are an ES2018 feature.
+Returns `{route, groups}`, where `route` is the found route, and `groups` are matched named captures (ES2018 feature).
 
 ```js
 const routes = [
-  {path: /^[/]posts[/](?<slug>[^/]+)$/},
+  {reg: /^[/]posts[/](?<slug>[^/]+)$/},
 ]
 
-const url = new URL('https://example.com/posts/one-two-three?four=five#six')
-const route = ir.find(url, routes)
+const path = '/posts/one-two-three'
+const {route, groups} = ir.find(path, routes)
 
-console.log(url.searchParams.get('slug'))
-// 'one-two-three'
-```
-
-### `match(url, route)` → `bool`
-
-Returns true if the route matches the URL's `pathname`. If the route was matched, the URL's `searchParams` may be mutated, adding the substrings matched by named capture groups.
-
-```js
-const route = {path: /^[/]posts[/](?<slug>[^/]+)$/}
-
-const url = new URL('https://example.com')
-console.log(ir.match(url, route), url.searchParams.get('slug'))
-// false, null
-
-url.href = 'https://example.com/posts/one-two-three'
-console.log(ir.match(url, route), url.searchParams.get('slug'))
-// true, 'one-two-three'
+console.log(groups)
+// {slug: 'one-two-three'}
 ```
 
 ### `urlWithPathname(url, pathname)` → `string`
@@ -311,6 +304,14 @@ console.log(searchQuery(search))
 ```
 
 ## Changelog
+
+### `0.6.0`
+
+Breaking API revision: removed `match`, revised `find`.
+
+`find` no longer deals with `URL` objects. It takes a plain string, runs routes against it, and returns `{route, groups}`.
+
+Route regex must be `route.reg`, rather than `route.path`. Imperouter attaches no special meaning to the string passed to it.
 
 ### `0.5.1`
 

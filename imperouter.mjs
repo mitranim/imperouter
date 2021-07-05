@@ -1,27 +1,23 @@
 /** Public API **/
 
-export function find(url, routes) {
-  validUrl(url)
-  return routes.find(matchBy, url)
-}
+export function find(str, routes) {
+  valid(str, isStr)
+  valid(routes, isArr)
 
-export function match(url, route) {
-  validUrl(url)
-  validRoute(route)
-  const {path: reg} = route
+  for (let i = 0; i < routes.length; i++) {
+    const route = routes[i]
+    validRoute(route)
 
-  const match = reg.exec(url.pathname)
-  if (!match) return false
+    const {reg} = route
 
-  const {groups} = match
-  if (groups) {
-    for (const key in groups) {
-      const val = groups[key]
-      if (isStr(val)) url.searchParams.set(key, val)
-    }
+    const match = reg.exec(str)
+    if (!match) continue
+
+    const groups = match.groups || Object.create(null)
+    return {route, groups}
   }
 
-  return true
+  return {route: undefined, groups: undefined}
 }
 
 export function urlWithPathname (url, pathname) {return withUrl(url, setPathname, pathname)}
@@ -58,8 +54,6 @@ export function searchQuery(search) {
 
 /** Internal Utils **/
 
-function matchBy(route) {return match(this, route)}
-
 /*
 Note: regexps with a "global" flag preserve state between calls to `.exec` or
 `.test`. They also produce surprising output with `String.prototype.match`.
@@ -68,8 +62,8 @@ the first place.
 */
 function validRoute(val) {
   valid(val, isStruct)
-  const {path: reg} = val
-  if (!isReg(reg)) throw Error(`routes must have a regexp ".path", got ${show(val)}`)
+  const {reg} = val
+  if (!isReg(reg)) throw Error(`routes must have a regexp ".reg", got ${show(val)}`)
   if (reg.global) throw Error(`route regexps must not have a global flag, got ${reg}`)
 }
 
