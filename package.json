@@ -1,8 +1,9 @@
 {
   "name": "imperouter",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "main": "./imperouter.mjs",
+  "scripts": {"prepublishOnly": "make prep"},
   "description": "Minimal pushstate routing for JS applications. Simple, low-level, imperative. Works with server-side rendering. Works with any UI library.",
   "keywords": [
     "pushstate",

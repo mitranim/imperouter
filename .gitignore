@@ -4,3 +4,4 @@
 !/*.mjs
 !/*.md
 !/package.json
+!/makefile

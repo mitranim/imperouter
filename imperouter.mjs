@@ -90,13 +90,11 @@ function setHash(url, hash) {url.hash = str(hash)}
 
 function searchClear(search) {
   validSearch(search)
-  search.forEach(searchDelete)
+  const keys = [...search.keys()]
+  keys.forEach(deleteAt, search)
 }
 
-function searchDelete(_val, key, search) {
-  validSearch(search)
-  search.delete(key)
-}
+function deleteAt(key) {this.delete(key)}
 
 function searchUpdate(search, fun, query) {
   query = dict(query)

@@ -77,7 +77,7 @@ npm i -E imperouter
 
 ```js
 import * as ir from 'imperouter'
-import * as ir from 'https://cdn.jsdelivr.net/npm/imperouter@0.6.0/jol.mjs'
+import * as ir from 'https://cdn.jsdelivr.net/npm/imperouter@0.6.1/jol.mjs'
 ```
 
 Example:
@@ -304,6 +304,10 @@ console.log(searchQuery(search))
 ```
 
 ## Changelog
+
+### `0.6.1`
+
+Bugfixes for query mutations. This affects all query-related functions.
 
 ### `0.6.0`
 
