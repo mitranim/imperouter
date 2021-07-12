@@ -179,11 +179,11 @@ const req = new ir.Router(window.location)
 
 #### `property router.url`
 
-Unlike `request.url`, `router.url` is not a string. It's an instance of [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL). All regexp-based router methods match against `router.url.pathname`. All other properties are inherited from [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request).
+Unlike the `url` property on a standard `Request` instance, `router.url` is not a string. It's an instance of [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL). All regexp-based router methods match against `router.url.pathname`. All other properties are inherited from [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request).
 
 #### `method router.preflight(fun = empty)`
 
-If `req.method` matches `HEAD` or `OPTIONS`, generate a response, default [`empty`](#). Otherwise, return nil. See [Usage](#usage). You can also pass a different function:
+If `req.method` matches `HEAD` or `OPTIONS`, generate a response, default [`empty`](#function-empty). Otherwise, return nil. See [Usage](#usage). You can also pass a different function:
 
 ```js
 req.preflight(preflight) || otherRoutes(req)
