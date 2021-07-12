@@ -1,18 +1,17 @@
 ## Overview
 
-Minimal JS tools for:
+Imperative router for hybrid SSR+SPA apps. Uses the standard built-in [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL) APIs. Works as-is in [Deno](https://deno.land) and browsers. Requires a `Request` polyfill in Node.
 
-  * String-and-regexp routing.
-  * URL/query encoding.
+Similar to the Go router [`rout`](https://github.com/mitranim/rout).
 
-Characteristics:
+Features:
 
+  * Simple, expressive router for SSR+SPA. Subclass of `Request`.
+  * Utility functions for URL manipulation, including query encoding/decoding.
   * Imperative control.
+  * Freedom to route by method, path, or both.
   * Abstract, usable for server-side routing or with any UI library.
-  * Lower-level than alternatives.
-  * Uses plain strings, regexps, and named capture groups. No custom dialects.
-  * Has various utils for URL encoding/decoding. The kind of stuff you wish the [`URL` standard](https://url.spec.whatwg.org) had.
-  * Small and dependency-free (≈5 KiB _un_-minified).
+  * Uses regexps and named capture groups. No custom dialects.
 
 Tiny, dependency-free, single file, native module.
 
@@ -22,50 +21,53 @@ Tiny, dependency-free, single file, native module.
 * [Why](#why)
 * [Usage](#usage)
 * [API](#api)
-  * [Types](#types)
-  * [`find(str, routes)`](#findstr-routes--route-groups)
-  * [`urlWithPathname(url, pathname)`](#urlwithpathnameurl-pathname--string)
-  * [`urlWithSearch(url, search)`](#urlwithsearchurl-search--string)
-  * [`urlWithHash(url, hash)`](#urlwithhashurl-hash--string)
-  * [`urlWithQuery(url, query)`](#urlwithqueryurl-query--string)
-  * [`urlAppendQuery(url, query)`](#urlappendqueryurl-query--string)
-  * [`urlPatchQuery(url, query)`](#urlpatchqueryurl-query--string)
-  * [`urlMutReplaceQuery(url, query)`](#urlmutreplacequeryurl-query--url)
-  * [`urlMutAppendQuery(url, query)`](#urlmutappendqueryurl-query--url)
-  * [`urlMutPatchQuery(url, query)`](#urlmutpatchqueryurl-query--url)
-  * [`searchReplace(search, query)`](#searchreplacesearch-query--urlsearchparams)
-  * [`searchAppend(search, query)`](#searchappendsearch-query--urlsearchparams)
-  * [`searchPatch(search, query)`](#searchpatchsearch-query--urlsearchparams)
-  * [`withUrl(url, fun, ...args)`](#withurlurl-fun-args--string)
-  * [`urlQuery(url)`](#urlqueryurl--string-string--string)
-  * [`searchQuery(search)`](#searchquerysearch--string-string--string)
+  * [`class Router`](#class-router-extends-request)
+    * [`property router.url`](#property-routerurl)
+    * [`method router.preflight`](#method-routerpreflightfun--empty)
+    * [`method router.sub`](#method-routersubreg-fun)
+    * [`method router.meths`](#method-routermethsreg-fun)
+    * [`method router.meth`](#method-routermethmethod-reg-fun)
+    * [`method router.any`](#method-routeranyreg-fun)
+    * [`method router.get`](#method-routergetreg-fun)
+    * [`method router.head`](#method-routerheadreg-fun)
+    * [`method router.options`](#method-routeroptionsreg-fun)
+    * [`method router.post`](#method-routerpostreg-fun)
+    * [`method router.put`](#method-routerputreg-fun)
+    * [`method router.patch`](#method-routerpatchreg-fun)
+    * [`method router.delete`](#method-routerdeletereg-fun)
+    * [`Router` undocumented](#router-undocumented)
+  * [`function empty`](#function-empty)
+  * [`function notFound`](#function-notfoundreq)
+  * [`function notAllowed`](#function-notallowedreq)
+  * [`function urlWithPathname`](#function-urlwithpathnameurl-pathname--string)
+  * [`function urlWithSearch`](#function-urlwithsearchurl-search--string)
+  * [`function urlWithHash`](#function-urlwithhashurl-hash--string)
+  * [`function urlWithQuery`](#function-urlwithqueryurl-query--string)
+  * [`function urlAppendQuery`](#function-urlappendqueryurl-query--string)
+  * [`function urlPatchQuery`](#function-urlpatchqueryurl-query--string)
+  * [`function urlMutReplaceQuery`](#function-urlmutreplacequeryurl-query--url)
+  * [`function urlMutAppendQuery`](#function-urlmutappendqueryurl-query--url)
+  * [`function urlMutPatchQuery`](#function-urlmutpatchqueryurl-query--url)
+  * [`function searchReplace`](#function-searchreplacesearch-query--urlsearchparams)
+  * [`function searchAppend`](#function-searchappendsearch-query--urlsearchparams)
+  * [`function searchPatch`](#function-searchpatchsearch-query--urlsearchparams)
+  * [`function withUrl`](#function-withurlurl-fun-args--string)
+  * [`function urlQuery`](#function-urlqueryurl--string-string--string)
+  * [`function searchQuery`](#function-searchquerysearch--string-string--string)
+  * [Undocumented](#undocumented)
+* [Do and Don't](#do-and-dont)
 * [Changelog](#changelog)
 * [Misc](#misc)
 
 ## Why
 
-Most routing libraries are overwrought.
+Instead of replacing or wrapping standard interfaces, Imperouter lets you work _directly_ with the built-in `Request` and `URL` APIs, extending what you can do with them.
 
-Consider `react-router`:
+Imperouter uses imperative, procedural control flow. It does not have, and _does not need_, any kind of "middleware" or "interceptors".
 
-* Ridiculous internal and API complexity.
-* Insanely large; last I checked it was around 40 KiB minified.
-* Custom string-based dialect for path matching.
-* Hierarchical routing that makes top-level control impossible.
-* Routing through rendering:
-  * Makes it impossible to implement asynchronous top-level transitions, where the next page doesn't render until the data is ready.
-  * Makes it impossible to pre-render the next page and slide it into view.
-  * Hostile to isomorphic server-side rendering.
-  * Redirects are a side effect of rendering, which again is hostile to isomorphic apps, which want to handle routing _before_ rendering, and return 301/302/303 for redirects.
-* Missing support for URL queries; they don't even provide that as common-sense functions.
-* Slow rendering.
+Imperouter uses regexps and named capture groups. No string-based dialect, no surprises.
 
-Why regexps?
-
-* Can tell _exactly_ what it will match.
-* Don't have to learn fine semantics of yet another string-based dialect.
-* Imperouter returns the matched route. There are no new concepts to understand.
-* ES2018 has named capture groups, which obsolesces other ways of capturing named parameters, such as `'/path/:id'` in string-based dialects.
+Imperouter does not use any URL mounting, joining, or rewriting. You always match the full pathname, and receive the full URL, including the origin. This allows you to understand full routes on a glance, search them in your editor, and benefit from the standard `URL` interface.
 
 ## Usage
 
@@ -77,48 +79,81 @@ npm i -E imperouter
 
 ```js
 import * as ir from 'imperouter'
-import * as ir from 'https://cdn.jsdelivr.net/npm/imperouter@0.6.1/jol.mjs'
+
+import * as ir from 'https://cdn.jsdelivr.net/npm/imperouter@0.7.0/imperouter.mjs'
 ```
 
-Example:
+Example with Deno:
 
 ```js
 import * as ir from 'imperouter'
 
-const routes = [
-  {reg: /^[/]$/},
-  {reg: /^[/]posts[/](?<slug>[^/]+)$/},
-]
+function respond(event) {
+  const req = new ir.Router(event.request)
+  event.respondWith(response(req))
+}
 
-const path = '/posts/one-two-three'
-const {route, groups} = ir.find(path, routes)
+function response(req) {
+  return (
+    req.preflight() ||
+    req.sub(/^[/]api(?:[/]|$)/, apiRoutes) ||
+    req.sub(/(?:)/,             pageRoutes)
+  )
+}
 
-console.log(route)
-// {reg: /^[/]posts[/](?<slug>[^/]+)$/}
+// Because of `.sub()`, if there's no match, this is 404.
+async function apiRoutes(req) {
+  return cors(await (
+    req.meths(/^[/]api[/]posts$/, postRoot) ||
+    req.meths(/^[/]api[/]posts[/](?<id>[^/]+)$/, postById)
+  ))
+}
 
-console.log(groups)
-// {slug: 'one-two-three'}
+// Because of `.meths()`, if there's no match, this is 405.
+function postRoot(req) {
+  return (
+    req.get(/^[/]api[/]posts$/, postFeed) ||
+    req.post(/^[/]api[/]posts$/, postCreate)
+  )
+}
+
+// Because of `.meths()`, if there's no match, this is 405.
+function postById(req) {
+  return (
+    req.get(/^[/]api[/]posts[/](?<id>[^/]+)$/, postGet) ||
+    req.post(/^[/]api[/]posts[/](?<id>[^/]+)$/, postUpdate)
+  )
+}
+
+// Because of `.sub()`, if there's no match, this is 404.
+// But a website must have its own 404 route with an HTML page.
+function pageRoutes(req) {
+  return (
+    req.get(/^[/]posts$/,               posts) ||
+    req.get(/^[/]posts[/](?<id>[^/])$/, post)  ||
+    req.get(/(?:)/,                     notFound)
+  )
+}
+
+function postFeed(req)         {return new Response(`path: ${req.url.pathname}`)}
+function postCreate(req)       {return new Response(`path: ${req.url.pathname}`)}
+function postGet(req, {id})    {return new Response(`path: ${req.url.pathname}`)}
+function postUpdate(req, {id}) {return new Response(`path: ${req.url.pathname}`)}
+function posts(req)            {return new Response(`path: ${req.url.pathname}`)}
+function post(req, {id})       {return new Response(`path: ${req.url.pathname}`)}
+
+function notFound(req)         {
+  return new Response(`not found: ${req.url.pathname}`, {status: 404})
+}
+
+function cors(res) {
+  res.headers.set('access-control-allow-credentials', 'true')
+  res.headers.set('access-control-allow-headers', 'cache-control, content-type')
+  res.headers.set('access-control-allow-methods', 'OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE')
+  res.headers.set('access-control-allow-origin', '*')
+  return res
+}
 ```
-
-Imperouter returns the first matching route and named captures from its regexp. Interpreting the route is _up to you_.
-
-One useful pattern is to put a handler function into every route:
-
-```js
-const routes = [
-  {reg: /^[/]$/,                       fun: Index},
-  {reg: /^[/]posts[/](?<slug>[^/]+)$/, fun: Post},
-]
-
-const path = '/posts/one-two-three'
-const {route, groups} = ir.find(path, routes)
-route.fun(groups)
-
-function Index() {}
-function Post({slug}) {console.log(slug)}
-```
-
-You're free to include side effects in your route handlers, such as UI updates. You can trivially implement asynchronous transitions. This doesn't need any special library support.
 
 ## API
 
@@ -128,29 +163,122 @@ All examples imply an import:
 import * as ir from 'imperouter'
 ```
 
-### Types
+### `class Router extends Request`
 
-Imperouter uses standard `URL` objects. Spec: https://url.spec.whatwg.org
+Extends the standard [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) interface, adding convenience shortcuts for routing.
 
-In addition, it uses the convention that routes are plain objects whose `reg` is a regexp. They may contain arbitrary other properties.
-
-### `find(str, routes)` → `{route, groups}`
-
-Takes a string and a list of routes. Finds the first route whose `reg` regexp matches the string.
-
-Returns `{route, groups}`, where `route` is the found route, and `groups` are matched named captures (ES2018 feature).
+Because a router _is_ a `Request`, you can make one from an existing request (in Deno for SSR), or from scratch (in browsers for pushstate). You can also subclass `Router`, adding your own properties or methods.
 
 ```js
-const routes = [
-  {reg: /^[/]posts[/](?<slug>[^/]+)$/},
-]
+// In Deno.
+req = new ir.Router(req)
 
-const path = '/posts/one-two-three'
-const {route, groups} = ir.find(path, routes)
-
-console.log(groups)
-// {slug: 'one-two-three'}
+// In browsers, for pushstate routing.
+const req = new ir.Router(window.location)
 ```
+
+#### `property router.url`
+
+Unlike `request.url`, `router.url` is not a string. It's an instance of [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL). All regexp-based router methods match against `router.url.pathname`. All other properties are inherited from [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request).
+
+#### `method router.preflight(fun = empty)`
+
+If `req.method` matches `HEAD` or `OPTIONS`, generate a response, default [`empty`](#). Otherwise, return nil. See [Usage](#usage). You can also pass a different function:
+
+```js
+req.preflight(preflight) || otherRoutes(req)
+
+function preflight(req) {return new Response(`ok to proceed`)}
+```
+
+#### `method router.sub(reg, fun)`
+
+If `req.url.pathname` matches `reg`, _then_ `fun(req) || notFound(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 404 "not found", and without trying any other branches. See [Usage](#usage).
+
+```js
+req.sub(/^[/]api(?:[/]|$)/, apiRoutes) ||
+req.sub(/(?:)/,             pageRoutes)
+```
+
+#### `method router.meths(reg, fun)`
+
+Similar to [`router.sub`](#method-routersubreg-fun), but 405. If `req.url.pathname` matches `reg`, _then_ `fun(req) || notAllowed(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 405 "method not allowed", and without trying any other branches. See [Usage](#usage).
+
+```js
+req.meths(/^[/]api[/]posts$/, postRoot) || otherRoutes(req)
+
+function postRoot(req) {
+  return (
+    req.get(/^[/]api[/]posts$/, postFeed) ||
+    req.post(/^[/]api[/]posts$/, postCreate)
+  )
+}
+```
+
+#### `method router.meth(method, reg, fun)`
+
+If `req.method` matches `method` _and_ `req.url.pathname` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
+
+`Router` already comes with shortcuts such as [`router.get`](#method-routergetreg-fun). You should only need `router.meth` when overriding methods in a subclass, or when routing on unusual or custom HTTP methods.
+
+To match any path, use `/(?:)/`:
+
+```js
+req.meth('someHttpMethod', /(?:)/, someFun) || otherRoutes(req)
+```
+
+#### `method router.any(reg, fun)`
+
+If `req.url.pathname` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
+
+```js
+// 404 on unknown file requests.
+req.any(/[.]\w+$/, ir.notFound) || otherRoutes(req)
+```
+
+#### `method router.get(reg, fun)`
+
+Shortcut for `req.meth(ir.GET, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+
+#### `method router.head(reg, fun)`
+
+Shortcut for `req.meth(ir.HEAD, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+
+#### `method router.options(reg, fun)`
+
+Shortcut for `req.meth(ir.OPTIONS, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+
+#### `method router.post(reg, fun)`
+
+Shortcut for `req.meth(ir.POST, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+
+#### `method router.put(reg, fun)`
+
+Shortcut for `req.meth(ir.PUT, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+
+#### `method router.patch(reg, fun)`
+
+Shortcut for `req.meth(ir.PATCH, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+
+#### `method router.delete(reg, fun)`
+
+Shortcut for `req.meth(ir.DELETE, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+
+#### `Router` undocumented
+
+`Router` has useful methods that are undocumented to avoid bloating the docs. Check the [source code](imperouter.mjs), it's extremely simple.
+
+### `function empty()`
+
+Shortcut for `new Response()`, which is a valid empty response. Default in [`router.preflight`](#method-routerpreflightfun--empty).
+
+### `function notFound(req)`
+
+Shortcut for an extremely simple 404 response. Fallback in [`router.sub`](#method-routersubreg-fun).
+
+### `function notAllowed(req)`
+
+Shortcut for an extremely simple 405 response. Fallback in [`router.meths`](#method-routermethsreg-fun).
 
 ### `urlWithPathname(url, pathname)` → `string`
 
@@ -303,6 +431,55 @@ console.log(searchQuery(search))
 // { five: [ 'six' ], seven: [ 'eight', 'nine' ] }
 ```
 
+### Undocumented
+
+Some useful constants, functions, and methods are exported but undocumented to reduce doc bloat. Check the [source](imperouter.mjs).
+
+## Do and Don't
+
+Haven't ran benchmarks yet, but you should probably:
+
+* Avoid local closures. Instead, define route handlers statically.
+* Avoid large flat tables. Instead, structure your routes as trees.
+
+Do:
+
+```js
+function response(req) {
+  return (
+    // Grouped-up. If no match, tested only once, regardless of how many
+    // sub-routes it has.
+    req.get(/^[/]posts(?:[/]|$)/, postRoutes) ||
+    req.get(/(?:)/, notFound)
+  )
+}
+
+function postRoutes(req) {
+  return (
+    req.get(/^[/]posts$/,               posts) ||
+    req.get(/^[/]posts[/](?<id>[^/])$/, post)
+  )
+}
+
+// Statically defined functions, no closures.
+function posts(req) {}
+function post(req, {id}) {}
+function notFound(req) {}
+```
+
+Don't:
+
+```js
+// Single flat table. Multiple closures.
+function response(req) {
+  return (
+    req.get(/^[/]posts$/,               req => {})         ||
+    req.get(/^[/]posts[/](?<id>[^/])$/, (req, {id}) => {}) ||
+    req.get(/(?:)/,                     req => {})
+  )
+}
+```
+
 ## Changelog
 
 ### `0.6.1`
@@ -315,7 +492,7 @@ Breaking API revision: removed `match`, revised `find`.
 
 `find` no longer deals with `URL` objects. It takes a plain string, runs routes against it, and returns `{route, groups}`.
 
-Route regex must be `route.reg`, rather than `route.path`. Imperouter attaches no special meaning to the string passed to it.
+Route regexp must be `route.reg`, rather than `route.path`. Imperouter attaches no special meaning to the string passed to it.
 
 ### `0.5.1`
 

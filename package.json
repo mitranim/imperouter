@@ -1,15 +1,11 @@
 {
   "name": "imperouter",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "type": "module",
   "main": "./imperouter.mjs",
   "scripts": {"prepublishOnly": "make prep"},
-  "description": "Minimal pushstate routing for JS applications. Simple, low-level, imperative. Works with server-side rendering. Works with any UI library.",
-  "keywords": [
-    "pushstate",
-    "router",
-    "routing"
-  ],
+  "description": "Imperative router for hybrid SSR+SPA apps. Uses standard `Request` and `URL` APIs. Extremely simple and flexible.",
+  "keywords": ["router", "routing"],
   "repository": {
     "type": "git",
     "url": "https://github.com/mitranim/imperouter.git"
