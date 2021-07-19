@@ -2,6 +2,7 @@
 !/.*ignore
 !/.*rc
 !/*.mjs
+!/*.ts
 !/*.md
 !/package.json
 !/makefile

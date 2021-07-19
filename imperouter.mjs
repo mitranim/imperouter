@@ -1,12 +1,12 @@
 /** Public API **/
 
-export const GET = 'GET'
-export const HEAD = 'HEAD'
+export const GET     = 'GET'
+export const HEAD    = 'HEAD'
 export const OPTIONS = 'OPTIONS'
-export const POST = 'POST'
-export const PUT = 'PUT'
-export const PATCH = 'PATCH'
-export const DELETE = 'DELETE'
+export const POST    = 'POST'
+export const PUT     = 'PUT'
+export const PATCH   = 'PATCH'
+export const DELETE  = 'DELETE'
 
 export class Router extends Request {
   constructor() {
@@ -151,6 +151,7 @@ function toUrl(val) {
 }
 
 function urlStr(val) {
+  validUrl(url)
   if (val.protocol === 'file:') return val.pathname + val.search + val.hash
   return val.href
 }
