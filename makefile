@@ -1,8 +1,7 @@
 MAKEFLAGS := --silent --always-make
 PAR := $(MAKE) -j 128
 TEST := imperouter_test.ts
-# TODO: reload only local files.
-DENO := deno run --reload
+DENO := deno run
 
 watch:
 	$(PAR) test-w lint-w

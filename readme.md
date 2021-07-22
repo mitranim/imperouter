@@ -80,7 +80,7 @@ npm i -E imperouter
 ```js
 import * as r from 'imperouter'
 
-import * as r from 'https://cdn.jsdelivr.net/npm/imperouter@0.8.2/imperouter.mjs'
+import * as r from 'https://cdn.jsdelivr.net/npm/imperouter@0.8.3/imperouter.mjs'
 ```
 
 Example with Deno:
@@ -483,6 +483,10 @@ function response(req) {
 ```
 
 ## Changelog
+
+### `0.8.3`
+
+Minor bugfixes in `.d.ts` definition.
 
 ### `0.8.2`
 

@@ -1,3 +1,5 @@
+// This type definition needs its own tests.
+
 export const GET     = 'GET'
 export const HEAD    = 'HEAD'
 export const OPTIONS = 'OPTIONS'
@@ -24,22 +26,22 @@ export class Req extends Request {URL: URL}
 export function preflight<R extends Request = Request, T = Response>(req: R, fun?: ReqFunSync<R, T>): T | undefined
 
 // TODO: `Response<status = 404>`?
-export function sub<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunSync<R, T>): T | Response
-export function sub<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunAsync<R, T>): Promise<T | Response>
+export function sub<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunSync<R, T>): T | Response | undefined
+export function sub<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunAsync<R, T>): Promise<T | Response | undefined>
 
 // TODO: `Response<status = 405>`?
-export function methods<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunSync<R, T>): T | Response
-export function methods<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunAsync<R, T>): Promise<T | Response>
+export function methods<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunSync<R, T>): T | Response | undefined
+export function methods<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunAsync<R, T>): Promise<T | Response | undefined>
 
-export function method<R extends Request = Request, T = Response>(req: Request, method: string, pat: Pattern, fun: ReqFunSync<R, T>): T | undefined
-export function any<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
-export function get<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
-export function head<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
-export function options<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
-export function post<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
-export function put<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
-export function patch<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
-export function del<R extends Request = Request, T = Response>(req: Request, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function method<R extends Request = Request, T = Response>(req: R, method: string, pat: Pattern, fun: ReqFunSync<R, T>): T | undefined
+export function any<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function get<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function head<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function options<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function post<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function put<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function patch<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
+export function del<R extends Request = Request, T = Response>(req: R, pat: Pattern, fun: ReqFunParam<R, T>): T | undefined
 
 // TODO: `Response<status = 405>`?
 export function only(req: Request, ...methods: string[]): Response | undefined
@@ -57,10 +59,10 @@ export function testAny(req: Request, pat: Pattern): boolean
 export function match(req: Request, method: string, pat: Pattern): RegExpMatchArray | undefined
 export function matchAny(req: Request, pat: Pattern): RegExpMatchArray
 
-export function either<R extends Request = Request, T = Response>(req: Request, fun: ReqFunSync<R, T>, def: ReqFunSync<R, T>): T | undefined
-export function either<R extends Request = Request, T = Response>(req: Request, fun: ReqFunAsync<R, T>, def: ReqFunSync<R, T>): Promise<T | undefined>
-export function either<R extends Request = Request, T = Response>(req: Request, fun: ReqFunAsync<R, T>, def: ReqFunAsync<R, T>): Promise<T | undefined>
-export function either<R extends Request = Request, T = Response>(req: Request, fun: ReqFunSync<R, T>, def: ReqFunAsync<R, T>): Promise<T | undefined>
+export function either<R extends Request = Request, T = Response>(req: R, fun: ReqFunSync<R, T>, def: ReqFunSync<R, T>): T | undefined
+export function either<R extends Request = Request, T = Response>(req: R, fun: ReqFunAsync<R, T>, def: ReqFunSync<R, T>): Promise<T | undefined>
+export function either<R extends Request = Request, T = Response>(req: R, fun: ReqFunAsync<R, T>, def: ReqFunAsync<R, T>): Promise<T | undefined>
+export function either<R extends Request = Request, T = Response>(req: R, fun: ReqFunSync<R, T>, def: ReqFunAsync<R, T>): Promise<T | undefined>
 
 export function isMethod(req: Request, method: string): boolean
 export function notAllowed(req: Request): Response
