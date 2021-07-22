@@ -1,12 +1,13 @@
 ## Overview
 
-Imperative router for hybrid SSR+SPA apps. Uses the standard built-in [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL) APIs. Works as-is in [Deno](https://deno.land) and browsers. Requires a `Request` polyfill in Node.
+Imperative router for hybrid SSR+SPA apps. Uses the standard built-in [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL) APIs. Works as-is in [Deno](https://deno.land) and browsers. Requires `Request` and `Response` polyfills in Node.
 
 Similar to the Go router [`rout`](https://github.com/mitranim/rout).
 
 Features:
 
-  * Simple, expressive router for SSR+SPA. Subclass of `Request`.
+  * Simple, expressive router for SSR+SPA.
+  * Only functions of `Request`, `Response`, and `URL`. No added abstractions.
   * Utility functions for URL manipulation, including query encoding/decoding.
   * Imperative control.
   * Freedom to route by method, path, or both.
@@ -21,21 +22,20 @@ Tiny, dependency-free, single file, native module.
 * [Why](#why)
 * [Usage](#usage)
 * [API](#api)
-  * [`class Router`](#class-router-extends-request)
-    * [`property router.url`](#property-routerurl)
-    * [`method router.preflight`](#method-routerpreflightfun--empty)
-    * [`method router.sub`](#method-routersubreg-fun)
-    * [`method router.meths`](#method-routermethsreg-fun)
-    * [`method router.meth`](#method-routermethmethod-reg-fun)
-    * [`method router.any`](#method-routeranyreg-fun)
-    * [`method router.get`](#method-routergetreg-fun)
-    * [`method router.head`](#method-routerheadreg-fun)
-    * [`method router.options`](#method-routeroptionsreg-fun)
-    * [`method router.post`](#method-routerpostreg-fun)
-    * [`method router.put`](#method-routerputreg-fun)
-    * [`method router.patch`](#method-routerpatchreg-fun)
-    * [`method router.delete`](#method-routerdeletereg-fun)
-    * [`Router` undocumented](#router-undocumented)
+  * [`class Req extends Request`](#class-req-extends-request)
+    * [`property req.URL`](#property-requrl)
+  * [`function preflight`](#function-preflightreq-fun--empty)
+  * [`function sub`](#function-subreq-reg-fun)
+  * [`function methods`](#function-methodsreq-reg-fun)
+  * [`function method`](#function-methodreq-method-reg-fun)
+  * [`function any`](#function-anyreq-reg-fun)
+  * [`function get`](#function-getreq-reg-fun)
+  * [`function head`](#function-headreq-reg-fun)
+  * [`function options`](#function-optionsreq-reg-fun)
+  * [`function post`](#function-postreq-reg-fun)
+  * [`function put`](#function-putreq-reg-fun)
+  * [`function patch`](#function-patchreq-reg-fun)
+  * [`function del`](#function-delreq-reg-fun)
   * [`function empty`](#function-empty)
   * [`function notFound`](#function-notfoundreq)
   * [`function notAllowed`](#function-notallowedreq)
@@ -78,72 +78,72 @@ npm i -E imperouter
 ```
 
 ```js
-import * as ir from 'imperouter'
+import * as r from 'imperouter'
 
-import * as ir from 'https://cdn.jsdelivr.net/npm/imperouter@0.7.0/imperouter.mjs'
+import * as r from 'https://cdn.jsdelivr.net/npm/imperouter@0.8.0/imperouter.mjs'
 ```
 
 Example with Deno:
 
 ```js
-import * as ir from 'imperouter'
+import * as r from 'imperouter'
 
 function respond(event) {
-  const req = new ir.Router(event.request)
+  const req = new r.Req(event.request)
   event.respondWith(response(req))
 }
 
 function response(req) {
   return (
-    req.preflight() ||
-    req.sub(/^[/]api(?:[/]|$)/, apiRoutes) ||
-    req.sub(/(?:)/,             pageRoutes)
+    r.preflight(req) ||
+    r.sub(req, /^[/]api(?:[/]|$)/, apiRoutes) ||
+    r.sub(req, /(?:)/,             pageRoutes)
   )
 }
 
-// Because of `.sub()`, if there's no match, this is 404.
+// Because of `sub`, if there's no match, this is 404.
 async function apiRoutes(req) {
   return cors(await (
-    req.meths(/^[/]api[/]posts$/, postRoot) ||
-    req.meths(/^[/]api[/]posts[/](?<id>[^/]+)$/, postById)
+    r.methods(req, /^[/]api[/]posts$/, postRoot) ||
+    r.methods(req, /^[/]api[/]posts[/](?<id>[^/]+)$/, postById)
   ))
 }
 
-// Because of `.meths()`, if there's no match, this is 405.
+// Because of `methods`, if there's no match, this is 405.
 function postRoot(req) {
   return (
-    req.get(/^[/]api[/]posts$/, postFeed) ||
-    req.post(/^[/]api[/]posts$/, postCreate)
+    r.get(req, /^[/]api[/]posts$/, postFeed) ||
+    r.post(req, /^[/]api[/]posts$/, postCreate)
   )
 }
 
-// Because of `.meths()`, if there's no match, this is 405.
+// Because of `methods`, if there's no match, this is 405.
 function postById(req) {
   return (
-    req.get(/^[/]api[/]posts[/](?<id>[^/]+)$/, postGet) ||
-    req.post(/^[/]api[/]posts[/](?<id>[^/]+)$/, postUpdate)
+    r.get(req, /^[/]api[/]posts[/](?<id>[^/]+)$/, postGet) ||
+    r.post(req, /^[/]api[/]posts[/](?<id>[^/]+)$/, postUpdate)
   )
 }
 
-// Because of `.sub()`, if there's no match, this is 404.
+// Because of `sub`, if there's no match, this is 404.
 // But a website must have its own 404 route with an HTML page.
 function pageRoutes(req) {
   return (
-    req.get(/^[/]posts$/,               posts) ||
-    req.get(/^[/]posts[/](?<id>[^/])$/, post)  ||
-    req.get(/(?:)/,                     notFound)
+    r.get(req, /^[/]posts$/,               posts) ||
+    r.get(req, /^[/]posts[/](?<id>[^/])$/, post)  ||
+    r.get(req, /(?:)/,                     notFound)
   )
 }
 
-function postFeed(req)         {return new Response(`path: ${req.url.pathname}`)}
-function postCreate(req)       {return new Response(`path: ${req.url.pathname}`)}
-function postGet(req, {id})    {return new Response(`path: ${req.url.pathname}`)}
-function postUpdate(req, {id}) {return new Response(`path: ${req.url.pathname}`)}
-function posts(req)            {return new Response(`path: ${req.url.pathname}`)}
-function post(req, {id})       {return new Response(`path: ${req.url.pathname}`)}
+function postFeed(req)         {return new Response(`url: ${req.url}`)}
+function postCreate(req)       {return new Response(`url: ${req.url}`)}
+function postGet(req, {id})    {return new Response(`url: ${req.url}`)}
+function postUpdate(req, {id}) {return new Response(`url: ${req.url}`)}
+function posts(req)            {return new Response(`url: ${req.url}`)}
+function post(req, {id})       {return new Response(`url: ${req.url}`)}
 
 function notFound(req)         {
-  return new Response(`not found: ${req.url.pathname}`, {status: 404})
+  return new Response(`not found: ${req.url}`, {status: 404})
 }
 
 function cors(res) {
@@ -160,154 +160,152 @@ function cors(res) {
 All examples imply an import:
 
 ```js
-import * as ir from 'imperouter'
+import * as r from 'imperouter'
 ```
 
-### `class Router extends Request`
+### `class Req extends Request`
 
-Extends the standard [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) interface, adding convenience shortcuts for routing.
+Optional subclass of standard [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request). Adds `req.URL` which can slightly improve routing performance by avoiding repeated parsing.
 
-Because a router _is_ a `Request`, you can make one from an existing request (in Deno for SSR), or from scratch (in browsers for pushstate). You can also subclass `Router`, adding your own properties or methods.
+Make it from an existing request (in Deno for SSR), or from scratch (in browsers for pushstate). You can also subclass `Req`, adding your own properties or methods.
+
+Completely optional. All routing functions work on standard `Request`.
 
 ```js
 // In Deno.
-req = new ir.Router(req)
+req = new r.Req(req)
 
 // In browsers, for pushstate routing.
-const req = new ir.Router(window.location)
+const req = new r.Req(window.location)
 ```
 
-#### `property router.url`
+#### `property req.URL`
 
-Unlike the `url` property on a standard `Request` instance, `router.url` is not a string. It's an instance of [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL). All regexp-based router methods match against `router.url.pathname`. All other properties are inherited from [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request).
+Instance of [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL) created from `req.url`. All regexp-based functions in `imperouter` match against `req.URL.pathname` if available, which can slightly improve performance. Otherwise, they parse `req.url`.
 
-#### `method router.preflight(fun = empty)`
+### `function preflight(req, fun = empty)`
 
 If `req.method` matches `HEAD` or `OPTIONS`, generate a response, default [`empty`](#function-empty). Otherwise, return nil. See [Usage](#usage). You can also pass a different function:
 
 ```js
-req.preflight(preflight) || otherRoutes(req)
+r.preflight(req, preflight) || otherRoutes(req)
 
 function preflight(req) {return new Response(`ok to proceed`)}
 ```
 
-#### `method router.sub(reg, fun)`
+### `function sub(req, reg, fun)`
 
-If `req.url.pathname` matches `reg`, _then_ `fun(req) || notFound(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 404 "not found", and without trying any other branches. See [Usage](#usage).
+If pathname of `req.url` matches `reg`, _then_ `fun(req) || notFound(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 404 "not found", and without trying any other branches. See [Usage](#usage).
 
 ```js
-req.sub(/^[/]api(?:[/]|$)/, apiRoutes) ||
-req.sub(/(?:)/,             pageRoutes)
+r.sub(req, /^[/]api(?:[/]|$)/, apiRoutes) ||
+r.sub(req, /(?:)/,             pageRoutes)
 ```
 
-#### `method router.meths(reg, fun)`
+### `function methods(req, reg, fun)`
 
-Similar to [`router.sub`](#method-routersubreg-fun), but 405. If `req.url.pathname` matches `reg`, _then_ `fun(req) || notAllowed(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 405 "method not allowed", and without trying any other branches. See [Usage](#usage).
+Similar to [`sub`](#function-subreq-reg-fun), but 405. If pathname of `req.url` matches `reg`, _then_ `fun(req) || notAllowed(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 405 "method not allowed", and without trying any other branches. See [Usage](#usage).
 
 ```js
-req.meths(/^[/]api[/]posts$/, postRoot) || otherRoutes(req)
+r.methods(req, /^[/]api[/]posts$/, postRoot) || otherRoutes(req)
 
 function postRoot(req) {
   return (
-    req.get(/^[/]api[/]posts$/, postFeed) ||
-    req.post(/^[/]api[/]posts$/, postCreate)
+    r.get(req, /^[/]api[/]posts$/, postFeed) ||
+    r.post(req, /^[/]api[/]posts$/, postCreate)
   )
 }
 ```
 
-#### `method router.meth(method, reg, fun)`
+### `function method(req, method, reg, fun)`
 
-If `req.method` matches `method` _and_ `req.url.pathname` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
+If `req.method` matches `method` _and_ pathname of `req.url` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
 
-`Router` already comes with shortcuts such as [`router.get`](#method-routergetreg-fun). You should only need `router.meth` when overriding methods in a subclass, or when routing on unusual or custom HTTP methods.
+`imperouter` has shortcuts such as [`get`](#function-getreq-reg-fun). You should only need `method` for routing on unusual or custom HTTP methods.
 
 To match any path, use `/(?:)/`:
 
 ```js
-req.meth('someHttpMethod', /(?:)/, someFun) || otherRoutes(req)
+r.method(req, 'someHttpMethod', /(?:)/, someFun) || otherRoutes(req)
 ```
 
-#### `method router.any(reg, fun)`
+### `function any(req, reg, fun)`
 
-If `req.url.pathname` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
+If pathname of `req.url` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
 
 ```js
 // 404 on unknown file requests.
-req.any(/[.]\w+$/, ir.notFound) || otherRoutes(req)
+r.any(req, /[.]\w+$/, r.notFound) || otherRoutes(req)
 ```
 
-#### `method router.get(reg, fun)`
+### `function get(req, reg, fun)`
 
-Shortcut for `req.meth(ir.GET, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.GET, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
 
-#### `method router.head(reg, fun)`
+### `function head(req, reg, fun)`
 
-Shortcut for `req.meth(ir.HEAD, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.HEAD, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
 
-#### `method router.options(reg, fun)`
+### `function options(req, reg, fun)`
 
-Shortcut for `req.meth(ir.OPTIONS, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.OPTIONS, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
 
-#### `method router.post(reg, fun)`
+### `function post(req, reg, fun)`
 
-Shortcut for `req.meth(ir.POST, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.POST, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
 
-#### `method router.put(reg, fun)`
+### `function put(req, reg, fun)`
 
-Shortcut for `req.meth(ir.PUT, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.PUT, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
 
-#### `method router.patch(reg, fun)`
+### `function patch(req, reg, fun)`
 
-Shortcut for `req.meth(ir.PATCH, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.PATCH, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
 
-#### `method router.delete(reg, fun)`
+### `function del(req, reg, fun)`
 
-Shortcut for `req.meth(ir.DELETE, fun)`. See [`router.meth`](#method-routermethmethod-reg-fun) and [Usage](#usage).
-
-#### `Router` undocumented
-
-`Router` has useful methods that are undocumented to avoid bloating the docs. Check the [source code](imperouter.mjs), it's extremely simple.
+Shortcut for `r.method(req, r.DELETE, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
 
 ### `function empty()`
 
-Shortcut for `new Response()`, which is a valid empty response. Default in [`router.preflight`](#method-routerpreflightfun--empty).
+Shortcut for `new Response()`, which is a valid empty response. Default in [`preflight`](#function-preflightreq-fun--empty).
 
 ### `function notFound(req)`
 
-Shortcut for an extremely simple 404 response. Fallback in [`router.sub`](#method-routersubreg-fun).
+Shortcut for an extremely simple 404 response. Fallback in [`sub`](#function-subreq-reg-fun).
 
 ### `function notAllowed(req)`
 
-Shortcut for an extremely simple 405 response. Fallback in [`router.meths`](#method-routermethsreg-fun).
+Shortcut for an extremely simple 405 response. Fallback in [`methods`](#function-methodsreq-reg-fun).
 
-### `urlWithPathname(url, pathname)` → `string`
+### `function urlWithPathname(url, pathname)` → `string`
 
 Swaps the URL's pathname without affecting other properties. Returns a string. The input may be `string | URL` and is not mutated. The input may be "relative": without an origin.
 
 ```js
-console.log(ir.urlWithPathname('/one?two=three#four', 'five'))
+console.log(r.urlWithPathname('/one?two=three#four', 'five'))
 // '/five/?two=three#four'
 ```
 
-### `urlWithSearch(url, search)` → `string`
+### `function urlWithSearch(url, search)` → `string`
 
 Like `urlWithPathname`, but swaps the URL's search string:
 
 ```js
-console.log(ir.urlWithSearch('/one?two=three#four', 'five'))
+console.log(r.urlWithSearch('/one?two=three#four', 'five'))
 // '/one/?five#four'
 ```
 
-### `urlWithHash(url, hash)` → `string`
+### `function urlWithHash(url, hash)` → `string`
 
 Like `urlWithPathname`, but swaps the URL's hash string:
 
 ```js
-console.log(ir.urlWithHash('/one?two=three#four', 'five'))
+console.log(r.urlWithHash('/one?two=three#four', 'five'))
 // '/one?two=three#five'
 ```
 
-### `urlWithQuery(url, query)` → `string`
+### `function urlWithQuery(url, query)` → `string`
 
 Replaces the URL's search params with the provided query, which must be a dict. Encoding rules:
 
@@ -326,11 +324,11 @@ const query = {
   ten: undefined,
 }
 
-console.log(ir.urlWithQuery('/one?two=three#four', query))
+console.log(r.urlWithQuery('/one?two=three#four', query))
 // '/one?five=six&seven=eight&seven=nine#four'
 ```
 
-### `urlAppendQuery(url, query)` → `string`
+### `function urlAppendQuery(url, query)` → `string`
 
 Like `urlWithQuery`, but preserves any previously-existing search params, appending the query to them.
 
@@ -341,11 +339,11 @@ const query = {
   ten: undefined,
 }
 
-console.log(ir.urlAppendQuery('/one?two=three#four', query))
+console.log(r.urlAppendQuery('/one?two=three#four', query))
 // '/one?two=three&five=six&seven=eight&seven=nine#four'
 ```
 
-### `urlPatchQuery(url, query)` → `string`
+### `function urlPatchQuery(url, query)` → `string`
 
 Like `urlWithQuery`, but "patches" the search params, by preserving any which don't occur in the provided query, but replacing any that do occur.
 
@@ -355,23 +353,23 @@ const query = {
   eight: 'nine',
 }
 
-console.log(ir.urlPatchQuery('/one?two=three&four=five', query))
+console.log(r.urlPatchQuery('/one?two=three&four=five', query))
 // '/one?four=five&two=six&two=seven&eight=nine'
 ```
 
-### `urlMutReplaceQuery(url, query)` → `URL`
+### `function urlMutReplaceQuery(url, query)` → `URL`
 
 Like `urlWithQuery` but mutates the provided `URL`, returning the same instance.
 
-### `urlMutAppendQuery(url, query)` → `URL`
+### `function urlMutAppendQuery(url, query)` → `URL`
 
 Like `urlAppendQuery` but mutates the provided `URL`, returning the same instance.
 
-### `urlMutPatchQuery(url, query)` → `URL`
+### `function urlMutPatchQuery(url, query)` → `URL`
 
 Like `urlPatchQuery` but mutates the provided `URL`, returning the same instance.
 
-### `searchReplace(search, query)` → `URLSearchParams`
+### `function searchReplace(search, query)` → `URLSearchParams`
 
 Mutates the provided `URLSearchParams`, replacing its params with the provided query, as described in `urlWithQuery`.
 
@@ -383,21 +381,21 @@ const query = {
 }
 
 const search = new URLSearchParams('two=three')
-ir.searchReplace(search, query)
+r.searchReplace(search, query)
 
 console.log(search.toString())
 // 'five=six&seven=eight&seven=nine'
 ```
 
-### `searchAppend(search, query)` → `URLSearchParams`
+### `function searchAppend(search, query)` → `URLSearchParams`
 
 Mutates the provided `URLSearchParams`, appending the params from the provided query, as described in `urlAppendQuery`.
 
-### `searchPatch(search, query)` → `URLSearchParams`
+### `function searchPatch(search, query)` → `URLSearchParams`
 
 Mutates the provided `URLSearchParams`, patching it by the provided query, as described in `urlPatchQuery`.
 
-### `withUrl(url, fun, ...args)` → `string`
+### `function withUrl(url, fun, ...args)` → `string`
 
 Runs a function with a temporary URL instance parsed from the input, and returns the resulting string. The function should mutate the URL.
 
@@ -412,16 +410,16 @@ console.log(url)
 // '/one?four#five'
 ```
 
-### `urlQuery(url)` → `{[string]: string | [string]}`
+### `function urlQuery(url)` → `{[string]: string | [string]}`
 
 Extracts the URL's search params as a query dict. Opposite of `urlWithQuery`. The input may be `string | URL`.
 
 ```js
-console.log(ir.urlQuery('/one?five=six&seven=eight&seven=nine#four'))
+console.log(r.urlQuery('/one?five=six&seven=eight&seven=nine#four'))
 // { five: [ 'six' ], seven: [ 'eight', 'nine' ] }
 ```
 
-### `searchQuery(search)` → `{[string]: string | [string]}`
+### `function searchQuery(search)` → `{[string]: string | [string]}`
 
 Converts the search params, which must be `URLSearchParams`, into a query dict. Opposite of `searchReplace`.
 
@@ -433,7 +431,7 @@ console.log(searchQuery(search))
 
 ### Undocumented
 
-Some useful constants, functions, and methods are exported but undocumented to reduce doc bloat. Check the [source](imperouter.mjs).
+Some useful constants and functions are exported but undocumented to reduce doc bloat. Check the [source](imperouter.mjs) or the [type definition](imperouter.d.ts).
 
 ## Do and Don't
 
@@ -441,23 +439,27 @@ Haven't ran benchmarks yet, but you should probably:
 
 * Avoid local closures. Instead, define route handlers statically.
 * Avoid large flat tables. Instead, structure your routes as trees.
+* Use [`Req`](#class-req-extends-request) to avoid repeated URL parsing.
 
 Do:
 
 ```js
 function response(req) {
+  // Avoids repeated URL parsing: `req.URL` is pre-parsed.
+  req = new r.Req(req)
+
   return (
-    // Grouped-up. If no match, tested only once, regardless of how many
-    // sub-routes it has.
-    req.get(/^[/]posts(?:[/]|$)/, postRoutes) ||
-    req.get(/(?:)/, notFound)
+    // Grouped-up. If there's no match, the path is tested only once,
+    // regardless of how many sub-routes it has.
+    r.get(req, /^[/]posts(?:[/]|$)/, postRoutes) ||
+    r.get(req, /(?:)/, notFound)
   )
 }
 
 function postRoutes(req) {
   return (
-    req.get(/^[/]posts$/,               posts) ||
-    req.get(/^[/]posts[/](?<id>[^/])$/, post)
+    r.get(req, /^[/]posts$/,               posts) ||
+    r.get(req, /^[/]posts[/](?<id>[^/])$/, post)
   )
 }
 
@@ -473,14 +475,23 @@ Don't:
 // Single flat table. Multiple closures.
 function response(req) {
   return (
-    req.get(/^[/]posts$/,               req => {})         ||
-    req.get(/^[/]posts[/](?<id>[^/])$/, (req, {id}) => {}) ||
-    req.get(/(?:)/,                     req => {})
+    r.get(req, /^[/]posts$/,               req => {})         ||
+    r.get(req, /^[/]posts[/](?<id>[^/])$/, (req, {id}) => {}) ||
+    r.get(req, /(?:)/,                     req => {})
   )
 }
 ```
 
 ## Changelog
+
+### `0.8.0`
+
+* Breaking: converted `Router` methods to functions, removed `Router`.
+* Added TypeScript definitions.
+
+### `0.7.0`
+
+Breaking API revision: `Request`-based routing for SSR+SPA.
 
 ### `0.6.1`
 
