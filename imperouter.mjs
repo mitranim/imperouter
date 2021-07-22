@@ -24,35 +24,35 @@ export function preflight(req, fun = empty) {
   return (isMethod(req, HEAD) || isMethod(req, OPTIONS)) ? fun(req) : undefined
 }
 
-export function sub(req, reg, fun) {
+export function sub(req, pat, fun) {
   valid(fun, isFun)
-  return testAny(req, reg) ? either(req, fun, notFound) : undefined
+  return testAny(req, pat) ? either(req, fun, notFound) : undefined
 }
 
-export function methods(req, reg, fun) {
+export function methods(req, pat, fun) {
   valid(fun, isFun)
-  return testAny(req, reg) ? either(req, fun, notAllowed) : undefined
+  return testAny(req, pat) ? either(req, fun, notAllowed) : undefined
 }
 
-export function method(req, method, reg, fun) {
-  valid(reg, isReg)
+export function method(req, method, pat, fun) {
+  valid(pat, isPat)
   valid(fun, isFun)
-  return isMethod(req, method) ? any(req, reg, fun) : undefined
+  return isMethod(req, method) ? any(req, pat, fun) : undefined
 }
 
-export function any(req, reg, fun) {
+export function any(req, pat, fun) {
   valid(fun, isFun)
-  const match = matchAny(req, reg)
+  const match = matchAny(req, pat)
   return (match || undefined) && fun(req, match.groups)
 }
 
-export function get     (req, reg, fun) {return method(req, GET,     reg, fun)}
-export function head    (req, reg, fun) {return method(req, HEAD,    reg, fun)}
-export function options (req, reg, fun) {return method(req, OPTIONS, reg, fun)}
-export function post    (req, reg, fun) {return method(req, POST,    reg, fun)}
-export function put     (req, reg, fun) {return method(req, PUT,     reg, fun)}
-export function patch   (req, reg, fun) {return method(req, PATCH,   reg, fun)}
-export function del     (req, reg, fun) {return method(req, DELETE,  reg, fun)}
+export function get     (req, pat, fun) {return method(req, GET,     pat, fun)}
+export function head    (req, pat, fun) {return method(req, HEAD,    pat, fun)}
+export function options (req, pat, fun) {return method(req, OPTIONS, pat, fun)}
+export function post    (req, pat, fun) {return method(req, POST,    pat, fun)}
+export function put     (req, pat, fun) {return method(req, PUT,     pat, fun)}
+export function patch   (req, pat, fun) {return method(req, PATCH,   pat, fun)}
+export function del     (req, pat, fun) {return method(req, DELETE,  pat, fun)}
 
 export function only(req, ...methods) {
   valid(req, isReq)
@@ -67,28 +67,26 @@ export function onlyPut(req)     {return only(req, PUT)}
 export function onlyPatch(req)   {return only(req, PATCH)}
 export function onlyDelete(req)  {return only(req, DELETE)}
 
-export function test(req, method, reg) {
-  valid(reg, isReg)
-  return isMethod(req, method) ? testAny(req, reg) : undefined
+export function test(req, method, pat) {
+  valid(pat, isPat)
+  return isMethod(req, method) ? testAny(req, pat) : undefined
 }
 
-export function testAny(req, reg) {
-  valid(req, isReq)
-  valid(reg, isReg)
-  reg.lastIndex = 0
-  return reg.test(reqPathname(req))
+export function testAny(req, pat) {
+  const pathname = reqPathname(req)
+  if (isStr(pat)) return pathname === pat
+  return reg(pat).test(pathname)
 }
 
-export function match(req, method, reg) {
-  valid(reg, isReg)
-  return isMethod(req, method) ? matchAny(req, reg) : undefined
+export function match(req, method, pat) {
+  valid(pat, isPat)
+  return isMethod(req, method) ? matchAny(req, pat) : undefined
 }
 
-export function matchAny(req, reg) {
-  valid(req, isReq)
-  valid(reg, isReg)
-  reg.lastIndex = 0
-  return reqPathname(req).match(reg)
+export function matchAny(req, pat) {
+  const pathname = reqPathname(req)
+  if (isStr(pat)) return pathname === pat ? [pathname] : null
+  return pathname.match(reg(pat))
 }
 
 export function either(req, fun, def) {
@@ -248,6 +246,12 @@ function fixProto(ref, {prototype}) {
   Object.setPrototypeOf(ref, prototype)
 }
 
+function reg(val) {
+  valid(val, isReg)
+  val.lastIndex = 0
+  return val
+}
+
 function isNil(val)       {return val == null}
 function isStr(val)       {return typeof val === 'string'}
 function isPrim(val)      {return !isComp(val)}
@@ -259,6 +263,7 @@ function isReg(val)       {return isInst(val, RegExp)}
 function isDate(val)      {return isInst(val, Date)}
 function isPromise(val)   {return isComp(val) && isFun(val.then) && isFun(val.catch)}
 function isReq(val)       {return isObj(val) && isStr(val.url) && isStr(val.method)}
+function isPat(val)       {return isStr(val) || isReg(val)}
 function isInst(val, Cls) {return isComp(val) && val instanceof Cls}
 
 function isDict(val) {

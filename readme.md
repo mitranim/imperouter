@@ -8,11 +8,11 @@ Features:
 
   * Simple, expressive router for SSR+SPA.
   * Only functions of `Request`, `Response`, and `URL`. No added abstractions.
-  * Utility functions for URL manipulation, including query encoding/decoding.
   * Imperative control.
   * Freedom to route by method, path, or both.
   * Abstract, usable for server-side routing or with any UI library.
-  * Uses regexps and named capture groups. No custom dialects.
+  * Uses regexps with named capture groups. Also allows strings for _exact_ matching. No custom string-based dialects.
+  * Bonus: utility functions for URL manipulation, including query encoding/decoding.
 
 Tiny, dependency-free, single file, native module.
 
@@ -25,17 +25,17 @@ Tiny, dependency-free, single file, native module.
   * [`class Req extends Request`](#class-req-extends-request)
     * [`property req.URL`](#property-requrl)
   * [`function preflight`](#function-preflightreq-fun--empty)
-  * [`function sub`](#function-subreq-reg-fun)
-  * [`function methods`](#function-methodsreq-reg-fun)
-  * [`function method`](#function-methodreq-method-reg-fun)
-  * [`function any`](#function-anyreq-reg-fun)
-  * [`function get`](#function-getreq-reg-fun)
-  * [`function head`](#function-headreq-reg-fun)
-  * [`function options`](#function-optionsreq-reg-fun)
-  * [`function post`](#function-postreq-reg-fun)
-  * [`function put`](#function-putreq-reg-fun)
-  * [`function patch`](#function-patchreq-reg-fun)
-  * [`function del`](#function-delreq-reg-fun)
+  * [`function sub`](#function-subreq-pat-fun)
+  * [`function methods`](#function-methodsreq-pat-fun)
+  * [`function method`](#function-methodreq-method-pat-fun)
+  * [`function any`](#function-anyreq-pat-fun)
+  * [`function get`](#function-getreq-pat-fun)
+  * [`function head`](#function-headreq-pat-fun)
+  * [`function options`](#function-optionsreq-pat-fun)
+  * [`function post`](#function-postreq-pat-fun)
+  * [`function put`](#function-putreq-pat-fun)
+  * [`function patch`](#function-patchreq-pat-fun)
+  * [`function del`](#function-delreq-pat-fun)
   * [`function empty`](#function-empty)
   * [`function notFound`](#function-notfoundreq)
   * [`function notAllowed`](#function-notallowedreq)
@@ -65,7 +65,7 @@ Instead of replacing or wrapping standard interfaces, Imperouter lets you work _
 
 Imperouter uses imperative, procedural control flow. It does not have, and _does not need_, any kind of "middleware" or "interceptors".
 
-Imperouter uses regexps and named capture groups. No string-based dialect, no surprises.
+Imperouter uses regexps with named capture groups. It also allows strings for _exact_ matching. No custom string-based dialects, no surprises.
 
 Imperouter does not use any URL mounting, joining, or rewriting. You always match the full pathname, and receive the full URL, including the origin. This allows you to understand full routes on a glance, search them in your editor, and benefit from the standard `URL` interface.
 
@@ -80,7 +80,7 @@ npm i -E imperouter
 ```js
 import * as r from 'imperouter'
 
-import * as r from 'https://cdn.jsdelivr.net/npm/imperouter@0.8.1/imperouter.mjs'
+import * as r from 'https://cdn.jsdelivr.net/npm/imperouter@0.8.2/imperouter.mjs'
 ```
 
 Example with Deno:
@@ -104,7 +104,7 @@ function response(req) {
 // Because of `sub`, if there's no match, this is 404.
 async function apiRoutes(req) {
   return cors(await (
-    r.methods(req, /^[/]api[/]posts$/, postRoot) ||
+    r.methods(req, `/api/posts`,                      postRoot) ||
     r.methods(req, /^[/]api[/]posts[/](?<id>[^/]+)$/, postById)
   ))
 }
@@ -112,15 +112,15 @@ async function apiRoutes(req) {
 // Because of `methods`, if there's no match, this is 405.
 function postRoot(req) {
   return (
-    r.get(req, /^[/]api[/]posts$/, postFeed) ||
-    r.post(req, /^[/]api[/]posts$/, postCreate)
+    r.get(req,  `/api/posts`, postFeed) ||
+    r.post(req, `/api/posts`, postCreate)
   )
 }
 
 // Because of `methods`, if there's no match, this is 405.
 function postById(req) {
   return (
-    r.get(req, /^[/]api[/]posts[/](?<id>[^/]+)$/, postGet) ||
+    r.get(req,  /^[/]api[/]posts[/](?<id>[^/]+)$/, postGet) ||
     r.post(req, /^[/]api[/]posts[/](?<id>[^/]+)$/, postUpdate)
   )
 }
@@ -129,7 +129,7 @@ function postById(req) {
 // But a website must have its own 404 route with an HTML page.
 function pageRoutes(req) {
   return (
-    r.get(req, /^[/]posts$/,               posts) ||
+    r.get(req, `/posts`,                   posts) ||
     r.get(req, /^[/]posts[/](?<id>[^/])$/, post)  ||
     r.get(req, /(?:)/,                     notFound)
   )
@@ -193,35 +193,35 @@ r.preflight(req, preflight) || otherRoutes(req)
 function preflight(req) {return new Response(`ok to proceed`)}
 ```
 
-### `function sub(req, reg, fun)`
+### `function sub(req, pat, fun)`
 
-If pathname of `req.url` matches `reg`, _then_ `fun(req) || notFound(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 404 "not found", and without trying any other branches. See [Usage](#usage).
+If pathname of `req.url` matches `pat`, _then_ `fun(req) || notFound(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 404 "not found", and without trying any other branches. See [Usage](#usage).
 
 ```js
 r.sub(req, /^[/]api(?:[/]|$)/, apiRoutes) ||
 r.sub(req, /(?:)/,             pageRoutes)
 ```
 
-### `function methods(req, reg, fun)`
+### `function methods(req, pat, fun)`
 
-Similar to [`sub`](#function-subreq-reg-fun), but 405. If pathname of `req.url` matches `reg`, _then_ `fun(req) || notAllowed(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 405 "method not allowed", and without trying any other branches. See [Usage](#usage).
+Similar to [`sub`](#function-subreq-pat-fun), but 405. If pathname of `req.url` matches `pat`, _then_ `fun(req) || notAllowed(req)`, async if needed. Otherwise nil. Ensures that once we match a branch, we definitely return a response, falling back on 405 "method not allowed", and without trying any other branches. See [Usage](#usage).
 
 ```js
-r.methods(req, /^[/]api[/]posts$/, postRoot) || otherRoutes(req)
+r.methods(req, `/api/posts`, postRoot) || otherRoutes(req)
 
 function postRoot(req) {
   return (
-    r.get(req, /^[/]api[/]posts$/, postFeed) ||
-    r.post(req, /^[/]api[/]posts$/, postCreate)
+    r.get(req, `/api/posts`, postFeed) ||
+    r.post(req, `/api/posts`, postCreate)
   )
 }
 ```
 
-### `function method(req, method, reg, fun)`
+### `function method(req, method, pat, fun)`
 
-If `req.method` matches `method` _and_ pathname of `req.url` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
+If `req.method` matches `method` _and_ pathname of `req.url` matches `pat`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the pattern. Otherwise nil.
 
-`imperouter` has shortcuts such as [`get`](#function-getreq-reg-fun). You should only need `method` for routing on unusual or custom HTTP methods.
+`imperouter` has shortcuts such as [`get`](#function-getreq-pat-fun). You should only need `method` for routing on unusual or custom HTTP methods.
 
 To match any path, use `/(?:)/`:
 
@@ -229,42 +229,42 @@ To match any path, use `/(?:)/`:
 r.method(req, 'someHttpMethod', /(?:)/, someFun) || otherRoutes(req)
 ```
 
-### `function any(req, reg, fun)`
+### `function any(req, pat, fun)`
 
-If pathname of `req.url` matches `reg`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the regexp. Otherwise nil.
+If pathname of `req.url` matches `pat`, _then_ `fun(req, groups)`, where `groups` are named capture groups from the pattern. Otherwise nil.
 
 ```js
 // 404 on unknown file requests.
 r.any(req, /[.]\w+$/, r.notFound) || otherRoutes(req)
 ```
 
-### `function get(req, reg, fun)`
+### `function get(req, pat, fun)`
 
-Shortcut for `r.method(req, r.GET, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.GET, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
-### `function head(req, reg, fun)`
+### `function head(req, pat, fun)`
 
-Shortcut for `r.method(req, r.HEAD, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.HEAD, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
-### `function options(req, reg, fun)`
+### `function options(req, pat, fun)`
 
-Shortcut for `r.method(req, r.OPTIONS, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.OPTIONS, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
-### `function post(req, reg, fun)`
+### `function post(req, pat, fun)`
 
-Shortcut for `r.method(req, r.POST, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.POST, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
-### `function put(req, reg, fun)`
+### `function put(req, pat, fun)`
 
-Shortcut for `r.method(req, r.PUT, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.PUT, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
-### `function patch(req, reg, fun)`
+### `function patch(req, pat, fun)`
 
-Shortcut for `r.method(req, r.PATCH, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.PATCH, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
-### `function del(req, reg, fun)`
+### `function del(req, pat, fun)`
 
-Shortcut for `r.method(req, r.DELETE, fun)`. See [`method`](#function-methodreq-method-reg-fun) and [Usage](#usage).
+Shortcut for `r.method(req, r.DELETE, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
 ### `function empty()`
 
@@ -272,11 +272,11 @@ Shortcut for `new Response()`, which is a valid empty response. Default in [`pre
 
 ### `function notFound(req)`
 
-Shortcut for an extremely simple 404 response. Fallback in [`sub`](#function-subreq-reg-fun).
+Shortcut for an extremely simple 404 response. Fallback in [`sub`](#function-subreq-pat-fun).
 
 ### `function notAllowed(req)`
 
-Shortcut for an extremely simple 405 response. Fallback in [`methods`](#function-methodsreq-reg-fun).
+Shortcut for an extremely simple 405 response. Fallback in [`methods`](#function-methodsreq-pat-fun).
 
 ### `function urlWithPathname(url, pathname)` → `string`
 
@@ -483,6 +483,10 @@ function response(req) {
 ```
 
 ## Changelog
+
+### `0.8.2`
+
+Support string patterns for _exact_ pathname matching.
 
 ### `0.8.1`
 

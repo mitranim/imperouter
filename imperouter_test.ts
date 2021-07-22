@@ -44,14 +44,32 @@ void function test_test() {
   }()
 
   void function test_method_nomatch_nil() {
-    eq(r.test(req, r.GET,  /three/), undefined)
-    eq(r.test(req, r.HEAD, /three/), undefined)
+    eq(r.test(req, r.GET,  `/three`),     undefined)
+    eq(r.test(req, r.HEAD, `/three`),     undefined)
+
+    eq(r.test(req, r.GET,  /three/),      undefined)
+    eq(r.test(req, r.HEAD, /three/),      undefined)
+
+    eq(r.test(req, r.GET,  /^[/]three$/), undefined)
+    eq(r.test(req, r.HEAD, /^[/]three$/), undefined)
   }()
 
-  void function test_method_match_bool() {
-    eq(r.test(req, r.POST, /(?:)/),  true)
-    eq(r.test(req, r.POST, /three/), true)
-    eq(r.test(req, r.POST, /four/),  false)
+  void function test_method_str_match_bool() {
+    eq(r.test(req, r.POST, `/three`),  true)
+
+    eq(r.test(req, r.POST, `three`),   false)
+    eq(r.test(req, r.POST, `/three/`), false)
+    eq(r.test(req, r.POST, `three/`),  false)
+    eq(r.test(req, r.POST, `four`),    false)
+    eq(r.test(req, r.POST, `/four`),   false)
+  }()
+
+  void function test_method_reg_match_bool() {
+    eq(r.test(req, r.POST, /(?:)/),       true)
+    eq(r.test(req, r.POST, /three/),      true)
+    eq(r.test(req, r.POST, /^[/]three$/), true)
+
+    eq(r.test(req, r.POST, /four/),       false)
   }()
 }()
 
@@ -66,14 +84,31 @@ void function test_match() {
   }()
 
   void function test_method_nomatch_nil() {
-    eq(r.match(req, r.GET,  /three/), undefined)
-    eq(r.match(req, r.HEAD, /three/), undefined)
+    eq(r.match(req, r.GET,  `/three`),     undefined)
+    eq(r.match(req, r.HEAD, `/three`),     undefined)
+
+    eq(r.match(req, r.GET,  /three/),      undefined)
+    eq(r.match(req, r.HEAD, /three/),      undefined)
+
+    eq(r.match(req, r.GET,  /^[/]three$/), undefined)
+    eq(r.match(req, r.HEAD, /^[/]three$/), undefined)
   }()
 
-  void function test_method_match_match() {
-    eq(       r.match(req, r.POST, /four/),                       null)
+  void function test_method_match_str_match() {
+    equiv(r.match(req, r.POST, `/three`),         ['/three'])
+    equiv(r.match(req, r.POST, `/three`)!.groups, undefined)
+
+    eq(r.match(req, r.POST, `three`),   null)
+    eq(r.match(req, r.POST, `/three/`), null)
+    eq(r.match(req, r.POST, `three/`),  null)
+  }()
+
+  void function test_method_match_reg_match() {
     equiv([...r.match(req, r.POST, /^[/](?<val>three)$/)!],       ['/three', 'three'])
     equiv(    r.match(req, r.POST, /^[/](?<val>three)$/)!.groups, {val: 'three'})
+
+    eq(r.match(req, r.POST, /three[/]/), null)
+    eq(r.match(req, r.POST, /four/),     null)
   }()
 }()
 
@@ -109,11 +144,17 @@ void function test_method() {
     throws(() => r.method(req, {}     as any, /(?:)/,           nop       as any), TypeError, `satisfy test`)
   }()
 
-  void function test_match_method_and_pathname() {
+  void function test_match_method_and_pathname_str() {
+    eq(r.method(req, r.GET,  `/three`, panic), undefined)
+    eq(r.method(req, r.POST, `/four`,  panic), undefined)
+
+    equiv(r.method(req, r.POST, `/three`, getargs), [req, undefined])
+  }()
+
+  void function test_match_method_and_pathname_reg() {
     eq(r.method(req, r.GET,  /(?:)/,                  panic), undefined)
     eq(r.method(req, r.POST, /one|two|four|five|six/, panic), undefined)
 
-    equiv(r.method(req, r.POST, /^[/]three$/,          getargs), [req, undefined])
     equiv(r.method(req, r.POST, /^[/]three$/,          getargs), [req, undefined])
     equiv(r.method(req, r.POST, /^[/](?<path>three)$/, getargs), [req, {path: 'three'}])
   }()
