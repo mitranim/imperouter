@@ -34,7 +34,7 @@ void function test_Req() {
 }()
 
 void function test_test() {
-  const req = new r.Req(TEST_URL, {method: r.POST})
+  const req = new Request(TEST_URL, {method: r.POST})
 
   void function test_reject_invalid_inputs() {
     throws(() => r.test(req, undefined as any, undefined as any), TypeError, `satisfy test`)
@@ -56,7 +56,7 @@ void function test_test() {
 }()
 
 void function test_match() {
-  const req = new r.Req(TEST_URL, {method: r.POST})
+  const req = new Request(TEST_URL, {method: r.POST})
 
   void function test_reject_invalid_inputs() {
     throws(() => r.match(req, undefined as any, undefined as any), TypeError, `satisfy test`)
@@ -78,7 +78,7 @@ void function test_match() {
 }()
 
 void function test_only() {
-  const req = new r.Req(TEST_URL, {method: r.POST})
+  const req = new Request(TEST_URL, {method: r.POST})
 
   void function test_reject_invalid_inputs() {
     throws(() => r.only(req, {}     as any, undefined as any), TypeError, `satisfy test`)
@@ -98,7 +98,7 @@ void function test_only() {
 }()
 
 void function test_method() {
-  const req = new r.Req(TEST_URL, {method: r.POST})
+  const req = new Request(TEST_URL, {method: r.POST})
 
   void function test_reject_invalid_inputs() {
     throws(() => r.method(req, {}     as any, undefined as any, undefined as any), TypeError, `satisfy test`)
@@ -121,7 +121,7 @@ void function test_method() {
 
 // TODO test async fallback.
 void function test_sub() {
-  const req = new r.Req(TEST_URL, {method: r.POST})
+  const req = new Request(TEST_URL, {method: r.POST})
 
   void function test_reject_invalid_inputs() {
     throws(() => r.sub(req, undefined as any, undefined as any), TypeError, `satisfy test`)
@@ -153,7 +153,7 @@ void function test_sub() {
 }()
 
 void function test_preflight() {
-  const req = new r.Req(TEST_URL, {method: r.POST})
+  const req = new Request(TEST_URL, {method: r.POST})
 
   void function test_reject_invalid_inputs() {
     throws(() => r.preflight(req, null   as any), TypeError, `satisfy test`)
