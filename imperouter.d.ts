@@ -1,21 +1,15 @@
 // This type definition needs its own tests.
 
-export const GET     = 'GET'
-export const HEAD    = 'HEAD'
-export const OPTIONS = 'OPTIONS'
-export const POST    = 'POST'
-export const PUT     = 'PUT'
-export const PATCH   = 'PATCH'
-export const DELETE  = 'DELETE'
+export const GET     = `GET`
+export const HEAD    = `HEAD`
+export const OPTIONS = `OPTIONS`
+export const POST    = `POST`
+export const PUT     = `PUT`
+export const PATCH   = `PATCH`
+export const DELETE  = `DELETE`
 
-export type Nil         = null | undefined
-export type Prim        = Nil | string | number | bigint | boolean | symbol
-export type Stringable  = Prim | Date
-export type Url         = string | URL
-export type Query       = Record<string, Nil | Stringable | Stringable[]>
-export type QueryStrict = Record<string, string[]>
-export type Groups      = Record<string, string>
-export type Pattern     = RegExp | string
+export type Groups  = Record<string, string>
+export type Pattern = RegExp | string
 
 export type ReqFunAsync<R extends Request = Request, T = Response> = (req: R) => Promise<T>
 export type ReqFunSync<R extends Request = Request, T = Response> = (req: R) => T
@@ -67,23 +61,5 @@ export function either<R extends Request = Request, T = Response>(req: R, fun: R
 export function isMethod(req: Request, method: string): boolean
 export function notAllowed(req: Request): Response
 export function notFound(req: Request): Response
+export function error(err: Error): Response
 export function empty(_?: Request): Response
-
-export function urlWithPathname(url: Url, pathname: string): string
-export function urlWithSearch(url: Url, search: string): string
-export function urlWithHash(url: Url, hash: string): string
-export function urlWithQuery(url: Url, query: Query | Nil): string
-export function urlAppendQuery(url: Url, query: Query | Nil): string
-export function urlPatchQuery(url: Url, query: Query | Nil): string
-export function urlMutReplaceQuery(url: Url, query: Query | Nil): string
-export function urlMutAppendQuery(url: Url, query: Query | Nil): string
-export function urlMutPatchQuery(url: Url, query: Query | Nil): string
-export function searchReplace(search: URLSearchParams, query: Query | Nil): URLSearchParams
-export function searchAppend(search: URLSearchParams, query: Query | Nil): URLSearchParams
-export function searchPatch(search: URLSearchParams, query: Query | Nil): URLSearchParams
-export function urlQuery(url: Url): QueryStrict
-export function searchQuery(search: URLSearchParams): QueryStrict
-
-// TODO: how to type?
-export function withUrl(url: Url, fun: UrlFun, ...args: unknown[]): string
-export type UrlFun = (url: URL, ...args: unknown[]) => URL | undefined

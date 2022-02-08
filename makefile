@@ -3,19 +3,19 @@ PAR := $(MAKE) -j 128
 TEST := imperouter_test.ts
 DENO := deno run
 
-watch:
-	$(PAR) test-w lint-w
-
-prep: lint test
-
-test-w:
+test_w:
 	$(DENO) --watch $(TEST)
 
 test:
 	$(DENO) $(TEST)
 
-lint-w:
+lint_w:
 	watchexec -r -d=0 -e=mjs,ts -n -- make lint
 
 lint:
 	deno lint
+
+watch:
+	$(PAR) test_w lint_w
+
+prep: test lint

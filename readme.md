@@ -12,7 +12,6 @@ Features:
   * Freedom to route by method, path, or both.
   * Abstract, usable for server-side routing or with any UI library.
   * Uses regexps with named capture groups. Also allows strings for _exact_ matching. No custom string-based dialects.
-  * Bonus: utility functions for URL manipulation, including query encoding/decoding.
 
 Tiny, dependency-free, single file, native module.
 
@@ -36,24 +35,9 @@ Tiny, dependency-free, single file, native module.
   * [`function put`](#function-putreq-pat-fun)
   * [`function patch`](#function-patchreq-pat-fun)
   * [`function del`](#function-delreq-pat-fun)
-  * [`function empty`](#function-empty)
   * [`function notFound`](#function-notfoundreq)
   * [`function notAllowed`](#function-notallowedreq)
-  * [`function urlWithPathname`](#function-urlwithpathnameurl-pathname--string)
-  * [`function urlWithSearch`](#function-urlwithsearchurl-search--string)
-  * [`function urlWithHash`](#function-urlwithhashurl-hash--string)
-  * [`function urlWithQuery`](#function-urlwithqueryurl-query--string)
-  * [`function urlAppendQuery`](#function-urlappendqueryurl-query--string)
-  * [`function urlPatchQuery`](#function-urlpatchqueryurl-query--string)
-  * [`function urlMutReplaceQuery`](#function-urlmutreplacequeryurl-query--url)
-  * [`function urlMutAppendQuery`](#function-urlmutappendqueryurl-query--url)
-  * [`function urlMutPatchQuery`](#function-urlmutpatchqueryurl-query--url)
-  * [`function searchReplace`](#function-searchreplacesearch-query--urlsearchparams)
-  * [`function searchAppend`](#function-searchappendsearch-query--urlsearchparams)
-  * [`function searchPatch`](#function-searchpatchsearch-query--urlsearchparams)
-  * [`function withUrl`](#function-withurlurl-fun-args--string)
-  * [`function urlQuery`](#function-urlqueryurl--string-string--string)
-  * [`function searchQuery`](#function-searchquerysearch--string-string--string)
+  * [`function empty`](#function-empty)
   * [Undocumented](#undocumented)
 * [Do and Don't](#do-and-dont)
 * [Changelog](#changelog)
@@ -266,10 +250,6 @@ Shortcut for `r.method(req, r.PATCH, fun)`. See [`method`](#function-methodreq-m
 
 Shortcut for `r.method(req, r.DELETE, fun)`. See [`method`](#function-methodreq-method-pat-fun) and [Usage](#usage).
 
-### `function empty()`
-
-Shortcut for `new Response()`, which is a valid empty response. Default in [`preflight`](#function-preflightreq-fun--empty).
-
 ### `function notFound(req)`
 
 Shortcut for an extremely simple 404 response. Fallback in [`sub`](#function-subreq-pat-fun).
@@ -278,156 +258,9 @@ Shortcut for an extremely simple 404 response. Fallback in [`sub`](#function-sub
 
 Shortcut for an extremely simple 405 response. Fallback in [`methods`](#function-methodsreq-pat-fun).
 
-### `function urlWithPathname(url, pathname)` → `string`
+### `function empty()`
 
-Swaps the URL's pathname without affecting other properties. Returns a string. The input may be `string | URL` and is not mutated. The input may be "relative": without an origin.
-
-```js
-console.log(r.urlWithPathname('/one?two=three#four', 'five'))
-// '/five/?two=three#four'
-```
-
-### `function urlWithSearch(url, search)` → `string`
-
-Like `urlWithPathname`, but swaps the URL's search string:
-
-```js
-console.log(r.urlWithSearch('/one?two=three#four', 'five'))
-// '/one/?five#four'
-```
-
-### `function urlWithHash(url, hash)` → `string`
-
-Like `urlWithPathname`, but swaps the URL's hash string:
-
-```js
-console.log(r.urlWithHash('/one?two=three#four', 'five'))
-// '/one?two=three#five'
-```
-
-### `function urlWithQuery(url, query)` → `string`
-
-Replaces the URL's search params with the provided query, which must be a dict. Encoding rules:
-
-* `null` and `undefined` are ignored.
-* `Array` is appended as a collection (each value separately).
-* `Date` is encoded via `.toISOString()`.
-* Primitives are automatically stringified.
-* Other types are rejected with an exception, to prevent gotchas.
-
-Returns a string. The input may be `string | URL` and is not mutated. The input may be "relative": without an origin.
-
-```js
-const query = {
-  five: 'six',
-  seven: ['eight', 'nine'],
-  ten: undefined,
-}
-
-console.log(r.urlWithQuery('/one?two=three#four', query))
-// '/one?five=six&seven=eight&seven=nine#four'
-```
-
-### `function urlAppendQuery(url, query)` → `string`
-
-Like `urlWithQuery`, but preserves any previously-existing search params, appending the query to them.
-
-```js
-const query = {
-  five: 'six',
-  seven: ['eight', 'nine'],
-  ten: undefined,
-}
-
-console.log(r.urlAppendQuery('/one?two=three#four', query))
-// '/one?two=three&five=six&seven=eight&seven=nine#four'
-```
-
-### `function urlPatchQuery(url, query)` → `string`
-
-Like `urlWithQuery`, but "patches" the search params, by preserving any which don't occur in the provided query, but replacing any that do occur.
-
-```js
-const query = {
-  two: ['six', 'seven'],
-  eight: 'nine',
-}
-
-console.log(r.urlPatchQuery('/one?two=three&four=five', query))
-// '/one?four=five&two=six&two=seven&eight=nine'
-```
-
-### `function urlMutReplaceQuery(url, query)` → `URL`
-
-Like `urlWithQuery` but mutates the provided `URL`, returning the same instance.
-
-### `function urlMutAppendQuery(url, query)` → `URL`
-
-Like `urlAppendQuery` but mutates the provided `URL`, returning the same instance.
-
-### `function urlMutPatchQuery(url, query)` → `URL`
-
-Like `urlPatchQuery` but mutates the provided `URL`, returning the same instance.
-
-### `function searchReplace(search, query)` → `URLSearchParams`
-
-Mutates the provided `URLSearchParams`, replacing its params with the provided query, as described in `urlWithQuery`.
-
-```js
-const query = {
-  five: 'six',
-  seven: ['eight', 'nine'],
-  ten: undefined,
-}
-
-const search = new URLSearchParams('two=three')
-r.searchReplace(search, query)
-
-console.log(search.toString())
-// 'five=six&seven=eight&seven=nine'
-```
-
-### `function searchAppend(search, query)` → `URLSearchParams`
-
-Mutates the provided `URLSearchParams`, appending the params from the provided query, as described in `urlAppendQuery`.
-
-### `function searchPatch(search, query)` → `URLSearchParams`
-
-Mutates the provided `URLSearchParams`, patching it by the provided query, as described in `urlPatchQuery`.
-
-### `function withUrl(url, fun, ...args)` → `string`
-
-Runs a function with a temporary URL instance parsed from the input, and returns the resulting string. The function should mutate the URL.
-
-The function is `ƒ(url, ...args) → (void | URL)`. The external input may be `string | URL` and is _not_ mutated.
-
-```js
-const url = withUrl('/one?two#three', function(url) {
-  url.search = 'four'
-  url.hash = 'five'
-})
-console.log(url)
-// '/one?four#five'
-```
-
-### `function urlQuery(url)` → `{[string]: string | [string]}`
-
-Extracts the URL's search params as a query dict. Opposite of `urlWithQuery`. The input may be `string | URL`.
-
-```js
-console.log(r.urlQuery('/one?five=six&seven=eight&seven=nine#four'))
-// { five: [ 'six' ], seven: [ 'eight', 'nine' ] }
-```
-
-### `function searchQuery(search)` → `{[string]: string | [string]}`
-
-Converts the search params, which must be `URLSearchParams`, into a query dict. Opposite of `searchReplace`.
-
-```js
-const search = new URLSearchParams('five=six&seven=eight&seven=nine')
-console.log(searchQuery(search))
-// { five: [ 'six' ], seven: [ 'eight', 'nine' ] }
-```
+Shortcut for `new Response()`, which is a valid empty response. Default in [`preflight`](#function-preflightreq-fun--empty).
 
 ### Undocumented
 
@@ -437,9 +270,9 @@ Some useful constants and functions are exported but undocumented to reduce doc 
 
 Haven't ran benchmarks yet, but you should probably:
 
-* Avoid local closures. Instead, define route handlers statically.
-* Avoid large flat tables. Instead, structure your routes as trees.
 * Use [`Req`](#class-req-extends-request) to avoid repeated URL parsing.
+* Avoid large flat tables. Instead, structure your routes as trees.
+* Avoid local closures. Instead, define route handlers statically.
 
 Do:
 
@@ -483,6 +316,10 @@ function response(req) {
 ```
 
 ## Changelog
+
+### `0.9.0`
+
+Cleanup: dropped URL-related utils. Use https://github.com/mitranim/ur for that.
 
 ### `0.8.3`
 
